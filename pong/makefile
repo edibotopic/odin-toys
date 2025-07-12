@@ -2,7 +2,7 @@ all: clean build
 
 build:
 	@echo "Building game in bin directory"
-	@mkdir bin && odin build . -o:speed -out:bin/sqong
+	@mkdir bin && odin build . -o:speed -out:bin/pong
 
 clean:
 	@echo "Cleaned bin directory"
