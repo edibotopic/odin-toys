@@ -2,7 +2,7 @@
 
 Add a node with left click.
 
-Right click on a node to start creatin an edge.
-Right click again on a target node to connect.
+Right click on a node to start creating an edge,
+then right click again on a target node to connect.
 
-The sum of each connected pair is calculated.
+The sum of all connected pairs is calculated.
