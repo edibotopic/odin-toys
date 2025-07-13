@@ -6,7 +6,8 @@ Little experiments with the Odin programming language.
 
 * Pong game
 * Node connector
-* cat command
+* `cat` command
+* Toolbar with rect cut
 
 ## Running
 
