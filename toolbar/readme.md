@@ -7,3 +7,8 @@ method.
 Uses [rect cut utility
 procedures](https://gist.github.com/karl-zylinski/ffccda0babb7e05b0657bf0acd3f1a99)
 from Karl Zylinksi.
+
+## Todo
+
+- [ ] Show example of cut width based on text size
+- [ ] Show basic hover/click functionality
