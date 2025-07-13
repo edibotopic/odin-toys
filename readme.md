@@ -5,15 +5,15 @@ Little experiments with the Odin programming language.
 ## Examples
 
 * Pong game
-* Node connector
+* Node interface
 * `cat` command
-* Toolbar with rect cut
+* UI Toolbar with rect cut
 
 ## Running
 
 To compile and run examples you will need to have Odin [installed](https://odin-lang.org/docs/install/) and on your path.
 
-After you `git clone` this repo, change to an example `<example>` directory and run `make`.
+After you `git clone` this repo, change to an specific example directory and run `make`.
 
 ```bash
 cd <example>
