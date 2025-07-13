@@ -6,4 +6,4 @@ method.
 
 Uses [rect cut utility
 procedures](https://gist.github.com/karl-zylinski/ffccda0babb7e05b0657bf0acd3f1a99)
-from Kary Zylinksi.
+from Karl Zylinksi.
