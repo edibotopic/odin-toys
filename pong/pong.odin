@@ -65,6 +65,10 @@ main :: proc() {
 	currentScreen := State.LOGO
 	framesCounter := 0
 	scoreCounter := 0
+	countdownTimer: i32 = 0
+	rallyCount: i32 = 0
+	isServing := false
+	scoreFlashTimer: i32 = 0
 
 	// Colors
 	theme.bg_main = CHAMPAGNE
@@ -122,6 +126,9 @@ main :: proc() {
 
 				if rl.IsKeyPressed(rl.KeyboardKey.ENTER) {
 					currentScreen = State.GAME
+					isServing = true
+					countdownTimer = 180
+					rallyCount = 0
 				}
 			};break
 		case .GAME:
@@ -152,6 +159,9 @@ main :: proc() {
 					p2.scr = MIN_SCORE
 					ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
 					ball.vel = m.float2{rnd.float32_normal(X_MEAN, X_SDEV), rnd.float32_normal(Y_MEAN, Y_SDEV)}
+					isServing = true
+					countdownTimer = 180
+					rallyCount = 0
 				}
 			};break
 		}
@@ -176,7 +186,7 @@ main :: proc() {
 			{
 				drawNet()
 
-				drawScores()
+				drawScores(scoreFlashTimer)
 
 				// Draw Paddles
 				P1: rl.Rectangle = {f32(p1.pos.x), f32(p1.pos.y), p1.dim.x, p1.dim.y}
@@ -186,15 +196,39 @@ main :: proc() {
 
 				drawBall()
 
+				// Draw countdown if serving
+				if isServing {
+					drawCountdown(countdownTimer)
+				}
+
+				// Draw rally counter
+				drawRallyCounter(rallyCount)
+
 				if !Paused {
 
-					playerControls()
+					// Countdown logic
+					if isServing {
+						countdownTimer -= 1
+						if countdownTimer <= 0 {
+							isServing = false
+						}
+					}
 
-					cpuAI()
+					// Decrement score flash
+					if scoreFlashTimer > 0 {
+						scoreFlashTimer -= 1
+					}
 
-					setBoundaries()
+					// Only move when not in countdown
+					if !isServing {
+						playerControls()
 
-					moveBall()
+						cpuAI()
+
+						setBoundaries()
+
+						moveBall()
+					}
 
 					p1.hit = false
 					p2.hit = false
@@ -211,9 +245,11 @@ main :: proc() {
 					} else if rl.CheckCollisionCircleRec({ball.pos.x, ball.pos.y}, ball.r, P1) &&
 					   ball.vel.x < 0 {
 						handlePaddleCollision(&p1, strike_fx1, strike_fx3)
+						rallyCount += 1
 					} else if rl.CheckCollisionCircleRec({ball.pos.x, ball.pos.y}, ball.r, P2) &&
 					   ball.vel.x > 0 {
 						handlePaddleCollision(&p2, strike_fx1, strike_fx3)
+						rallyCount += 1
 					}
 
 					if p1.hit == true {
@@ -237,6 +273,10 @@ main :: proc() {
 								rnd.float32_normal(Y_MEAN, Y_SDEV),
 							}
 							scoreCounter = 0
+							rallyCount = 0
+							isServing = true
+							countdownTimer = 180  // 3 seconds at 60fps
+							scoreFlashTimer = 30
 						}
 					} else if ball.pos.x > f32(WIN_DIM.x) {
 						scoreCounter += 1
@@ -250,6 +290,10 @@ main :: proc() {
 								rnd.float32_normal(Y_MEAN, Y_SDEV),
 							}
 							scoreCounter = 0
+							rallyCount = 0
+							isServing = true
+							countdownTimer = 180  // 3 seconds at 60fps
+							scoreFlashTimer = 30
 						}
 					}
 
@@ -361,9 +405,33 @@ drawNet :: proc() {
 	}
 }
 
-drawScores :: proc() {
-	rl.DrawText(rl.TextFormat("%i", p1.scr), 10, WIN_DIM.y / 10, 20, theme.txt_dark)
-	rl.DrawText(rl.TextFormat("%i", p2.scr), WIN_DIM.x - 20, WIN_DIM.y / 10, 20, theme.txt_dark)
+drawScores :: proc(flashTimer: i32) {
+	score_size: i32 = 60
+	score_y: i32 = 30
+
+	// P1 score - left side centered
+	p1_text := rl.TextFormat("%i", p1.scr)
+	p1_width := rl.MeasureText(p1_text, score_size)
+	p1_x := WIN_DIM.x / 4 - p1_width / 2
+
+	// P2 score - right side centered
+	p2_text := rl.TextFormat("%i", p2.scr)
+	p2_width := rl.MeasureText(p2_text, score_size)
+	p2_x := (WIN_DIM.x * 3 / 4) - p2_width / 2
+
+	// Flash effect when score changes
+	score_color := theme.txt_dark
+	if flashTimer > 0 {
+		// Pulse between dark and orange
+		alpha := f32(flashTimer) / 30.0
+		score_color = rl.ColorAlpha(theme.ball, alpha)
+	}
+
+	rl.DrawText(p1_text, p1_x, score_y, score_size, score_color)
+	rl.DrawText(p2_text, p2_x, score_y, score_size, score_color)
+
+	// Score separator
+	rl.DrawText("-", WIN_DIM.x / 2 - rl.MeasureText("-", 40) / 2, score_y + 10, 40, theme.txt_light)
 }
 
 playerControls :: proc() {
@@ -441,5 +509,77 @@ handlePaddleCollision :: proc(paddle: ^Paddle, strike_normal: rl.Sound, strike_s
 	} else {
 		ball.vel.x = -ball.vel.x * BALL_SPEED_MULT
 		rl.PlaySound(strike_normal)
+	}
+}
+
+drawCountdown :: proc(timer: i32) {
+	countdown_num: i32
+	if timer > 120 {
+		countdown_num = 3
+	} else if timer > 60 {
+		countdown_num = 2
+	} else if timer > 0 {
+		countdown_num = 1
+	} else {
+		return
+	}
+
+	text := rl.TextFormat("%i", countdown_num)
+	text_size: i32 = 120
+	text_width := rl.MeasureText(text, text_size)
+
+	// Pulsing effect
+	pulse := f32(timer % 60) / 60.0
+	alpha := 0.3 + pulse * 0.7
+	color := rl.ColorAlpha(theme.ball, alpha)
+
+	rl.DrawText(
+		text,
+		WIN_DIM.x / 2 - text_width / 2,
+		WIN_DIM.y / 2 - 60,
+		text_size,
+		color,
+	)
+}
+
+drawRallyCounter :: proc(rallyCount: i32) {
+	if rallyCount <= 1 {
+		return
+	}
+
+	text := rl.TextFormat("Rally: %i", rallyCount)
+	text_size: i32 = 20
+	text_width := rl.MeasureText(text, text_size)
+
+	// Position in top center
+	rl.DrawText(
+		text,
+		WIN_DIM.x / 2 - text_width / 2,
+		WIN_DIM.y - 30,
+		text_size,
+		theme.txt_light,
+	)
+
+	// Add excitement for long rallies
+	if rallyCount > 10 {
+		excitement_text: cstring
+		excitement_color := theme.ball
+		if rallyCount > 20 {
+			excitement_text = "AMAZING!"
+			excitement_color = ORANGE1
+		} else if rallyCount > 15 {
+			excitement_text = "INCREDIBLE!"
+		} else {
+			excitement_text = "Great Rally!"
+		}
+
+		excitement_width := rl.MeasureText(excitement_text, 25)
+		rl.DrawText(
+			excitement_text,
+			WIN_DIM.x / 2 - excitement_width / 2,
+			WIN_DIM.y / 2 - 30,
+			25,
+			excitement_color,
+		)
 	}
 }
