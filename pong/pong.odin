@@ -12,14 +12,14 @@ Window :: struct {
 }
 
 Paddle :: struct {
-	pos: m.float2,
-	vel: m.float2,  // Velocity for momentum
-	spd: f32,
-	scr: i32,       // Points in current game
+	pos:       m.float2,
+	vel:       m.float2, // Velocity for momentum
+	spd:       f32,
+	scr:       i32, // Points in current game
 	games_won: i32, // Games won in match
-	dim: m.float2,
-	col: rl.Color,
-	hit: bool,
+	dim:       m.float2,
+	col:       rl.Color,
+	hit:       bool,
 }
 
 p1, p2: Paddle
@@ -60,49 +60,49 @@ GameMode :: enum {
 }
 
 ModeConfig :: struct {
-	name:              cstring,
-	description:       cstring,
+	name:                cstring,
+	description:         cstring,
 
 	// Physics
-	ball_speed_mult:   f32,
-	friction:          f32,     // Multiplier applied each frame (1.0 = no friction)
-	wall_dampening:    f32,     // Energy lost on wall bounce
-	paddle_dampening:  f32,     // Energy lost on paddle hit
-	spin_dampening:    f32,
-	spin_acceleration: f32,
-	ball_scale_at_net: bool,    // Scale ball radius at net to simulate height
-	net_speed_modifier: f32,    // Speed multiplier at net (tennis: 0.8 = slower at peak)
-	ball_size_mult:    f32,     // Ball radius multiplier (squash: smaller)
+	ball_speed_mult:     f32,
+	friction:            f32, // Multiplier applied each frame (1.0 = no friction)
+	wall_dampening:      f32, // Energy lost on wall bounce
+	paddle_dampening:    f32, // Energy lost on paddle hit
+	spin_dampening:      f32,
+	spin_acceleration:   f32,
+	ball_scale_at_net:   bool, // Scale ball radius at net to simulate height
+	net_speed_modifier:  f32, // Speed multiplier at net (tennis: 0.8 = slower at peak)
+	ball_size_mult:      f32, // Ball radius multiplier (squash: smaller)
 
 	// Gameplay
-	win_score:         i32,
-	single_player:     bool,    // Player vs wall (squash)
-	has_net:           bool,    // Tennis has net obstacle
-	net_height:        f32,
+	win_score:           i32,
+	single_player:       bool, // Player vs wall (squash)
+	has_net:             bool, // Tennis has net obstacle
+	net_height:          f32,
 
 	// Visual theme
-	bg_color:          rl.Color,
-	court_primary:     rl.Color,
-	court_secondary:   rl.Color,
-	paddle_color:      rl.Color,
-	ball_color:        rl.Color,
-	text_color:        rl.Color,
-	accent_color:      rl.Color,
+	bg_color:            rl.Color,
+	court_primary:       rl.Color,
+	court_secondary:     rl.Color,
+	paddle_color:        rl.Color,
+	ball_color:          rl.Color,
+	text_color:          rl.Color,
+	accent_color:        rl.Color,
 
 	// UI customization
-	show_rally_counter: bool,
-	rally_threshold:    i32,   // Show excitement at this rally count
-	countdown_enabled:  bool,
-	paddle_rounded:     bool,  // Circular paddles for air hockey
+	show_rally_counter:  bool,
+	rally_threshold:     i32, // Show excitement at this rally count
+	countdown_enabled:   bool,
+	paddle_rounded:      bool, // Circular paddles for air hockey
 
 	// Paddle movement
-	allow_x_movement:   bool,  // Allow forward/backward movement (squash)
-	paddle_momentum:    f32,   // Momentum/inertia (1.0 = none, <1.0 = slide effect)
-	paddle_acceleration: f32,  // How quickly paddle reaches full speed
+	allow_x_movement:    bool, // Allow forward/backward movement (squash)
+	paddle_momentum:     f32, // Momentum/inertia (1.0 = none, <1.0 = slide effect)
+	paddle_acceleration: f32, // How quickly paddle reaches full speed
 
 	// Goals (air hockey)
-	has_goals:         bool,   // Use goal zones instead of entire edge
-	goal_size:         f32,    // Height of goal as fraction of screen (0.4 = 40%)
+	has_goals:           bool, // Use goal zones instead of entire edge
+	goal_size:           f32, // Height of goal as fraction of screen (0.4 = 40%)
 }
 
 current_mode: GameMode
@@ -126,24 +126,24 @@ main :: proc() {
 
 	rl.SetTargetFPS(window.fps)
 
-	currentScreen := State.MODE_SELECT  // Skip directly to mode selection
+	currentScreen := State.MODE_SELECT // Skip directly to mode selection
 	framesCounter := 0
 	scoreCounter := 0
 	countdownTimer: i32 = 0
 	rallyCount: i32 = 0
 	isServing := false
 	scoreFlashTimer: i32 = 0
-	powerHitCooldown: i32 = 0      // Cooldown for P1 power hit in air hockey
-	cpuPowerHitCooldown: i32 = 0   // Cooldown for CPU power hit in air hockey
-	powerHitFlash: i32 = 0         // Flash effect for P1 power hit
-	cpuPowerHitFlash: i32 = 0      // Flash effect for CPU power hit
+	powerHitCooldown: i32 = 0 // Cooldown for P1 power hit in air hockey
+	cpuPowerHitCooldown: i32 = 0 // Cooldown for CPU power hit in air hockey
+	powerHitFlash: i32 = 0 // Flash effect for P1 power hit
+	cpuPowerHitFlash: i32 = 0 // Flash effect for CPU power hit
 
 	// Colors - will be updated per mode
 	theme.bg_main = mode_config.bg_color
 	theme.txt_dark = mode_config.text_color
 	theme.txt_light = mode_config.court_secondary
 	// Players are red (P1) and blue (P2)
-	theme.p1 = rl.Color{255, 50, 50, 255}  // Red
+	theme.p1 = rl.Color{255, 50, 50, 255} // Red
 	theme.p2 = rl.Color{50, 100, 255, 255} // Blue
 	theme.ball = mode_config.ball_color
 
@@ -174,7 +174,7 @@ main :: proc() {
 	ball.pos = {f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
 	ball.vel = m.float2{rnd.float32_normal(X_MEAN, X_SDEV), rnd.float32_normal(Y_MEAN, Y_SDEV)}
 	ball.col = theme.ball
-	ball_prev_pos := ball.pos  // Track previous position for continuous collision detection
+	ball_prev_pos := ball.pos // Track previous position for continuous collision detection
 
 	// Pause
 	Paused: bool = false
@@ -193,7 +193,7 @@ main :: proc() {
 				if framesCounter > 120 {
 					currentScreen = State.MODE_SELECT
 				}
-			};break
+			}; break
 		case .TITLE:
 			{
 				rl.PlayMusicStream(back_fx2)
@@ -202,7 +202,7 @@ main :: proc() {
 				if rl.IsKeyPressed(rl.KeyboardKey.ENTER) {
 					currentScreen = State.MODE_SELECT
 				}
-			};break
+			}; break
 		case .MODE_SELECT:
 			{
 				rl.UpdateMusicStream(back_fx2)
@@ -225,7 +225,7 @@ main :: proc() {
 					theme.txt_dark = mode_config.text_color
 					theme.txt_light = mode_config.court_secondary
 					// Players are red (P1) and blue (P2)
-					theme.p1 = rl.Color{255, 50, 50, 255}  // Red
+					theme.p1 = rl.Color{255, 50, 50, 255} // Red
 					theme.p2 = rl.Color{50, 100, 255, 255} // Blue
 					theme.ball = mode_config.ball_color
 					p1.col = theme.p1
@@ -253,7 +253,7 @@ main :: proc() {
 				}
 
 				// No back button - ESC to quit
-			};break
+			}; break
 		case .GAME:
 			{
 				rl.StopMusicStream(back_fx2)
@@ -288,7 +288,10 @@ main :: proc() {
 					p2.games_won = 0
 					// Reset ball state so it doesn't carry over to next mode
 					ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
-					ball.vel = m.float2{rnd.float32_normal(X_MEAN, X_SDEV), rnd.float32_normal(Y_MEAN, Y_SDEV)}
+					ball.vel = m.float2 {
+						rnd.float32_normal(X_MEAN, X_SDEV),
+						rnd.float32_normal(Y_MEAN, Y_SDEV),
+					}
 					powerHitCooldown = 0
 					powerHitFlash = 0
 					cpuPowerHitCooldown = 0
@@ -308,7 +311,10 @@ main :: proc() {
 						p2.scr = MIN_SCORE
 						swapSides()
 						ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
-						ball.vel = m.float2{rnd.float32_normal(X_MEAN, X_SDEV), rnd.float32_normal(Y_MEAN, Y_SDEV)}
+						ball.vel = m.float2 {
+							rnd.float32_normal(X_MEAN, X_SDEV),
+							rnd.float32_normal(Y_MEAN, Y_SDEV),
+						}
 						isServing = true
 						countdownTimer = 180
 						rallyCount = 0
@@ -329,7 +335,10 @@ main :: proc() {
 						p2.scr = MIN_SCORE
 						swapSides()
 						ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
-						ball.vel = m.float2{rnd.float32_normal(X_MEAN, X_SDEV), rnd.float32_normal(Y_MEAN, Y_SDEV)}
+						ball.vel = m.float2 {
+							rnd.float32_normal(X_MEAN, X_SDEV),
+							rnd.float32_normal(Y_MEAN, Y_SDEV),
+						}
 						isServing = true
 						countdownTimer = 180
 						rallyCount = 0
@@ -344,7 +353,7 @@ main :: proc() {
 				} else if rl.IsKeyDown(rl.KeyboardKey.B) {
 					debugShow()
 				}
-			};break
+			}; break
 		case .END:
 			{
 				rl.StopMusicStream(back_fx1)
@@ -361,7 +370,10 @@ main :: proc() {
 					p1.games_won = 0
 					p2.games_won = 0
 					ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
-					ball.vel = m.float2{rnd.float32_normal(X_MEAN, X_SDEV), rnd.float32_normal(Y_MEAN, Y_SDEV)}
+					ball.vel = m.float2 {
+						rnd.float32_normal(X_MEAN, X_SDEV),
+						rnd.float32_normal(Y_MEAN, Y_SDEV),
+					}
 					isServing = true
 					countdownTimer = 180
 					rallyCount = 0
@@ -370,7 +382,7 @@ main :: proc() {
 					cpuPowerHitCooldown = 0
 					cpuPowerHitFlash = 0
 				}
-			};break
+			}; break
 		}
 
 		// DRAW
@@ -383,17 +395,17 @@ main :: proc() {
 			{
 				drawLogo()
 
-			};break
+			}; break
 		case .TITLE:
 			{
 				drawTitle()
 
-			};break
+			}; break
 		case .MODE_SELECT:
 			{
 				drawModeSelect(selected_mode)
 
-			};break
+			}; break
 		case .GAME:
 			{
 				drawNet()
@@ -409,9 +421,19 @@ main :: proc() {
 				if mode_config.paddle_rounded {
 					// Circular paddles (air hockey mallets)
 					paddle_radius := p1.dim.x
-					rl.DrawCircle(i32(p1.pos.x + paddle_radius), i32(p1.pos.y + p1.dim.y / 2), paddle_radius, p1.col)
+					rl.DrawCircle(
+						i32(p1.pos.x + paddle_radius),
+						i32(p1.pos.y + p1.dim.y / 2),
+						paddle_radius,
+						p1.col,
+					)
 					if !mode_config.single_player {
-						rl.DrawCircle(i32(p2.pos.x + paddle_radius), i32(p2.pos.y + p2.dim.y / 2), paddle_radius, p2.col)
+						rl.DrawCircle(
+							i32(p2.pos.x + paddle_radius),
+							i32(p2.pos.y + p2.dim.y / 2),
+							paddle_radius,
+							p2.col,
+						)
 					}
 				} else {
 					// Rectangle paddles
@@ -446,10 +468,10 @@ main :: proc() {
 					cooldown_color := theme.txt_light
 					if powerHitCooldown > 0 {
 						cooldown_text = rl.TextFormat("Power Hit: %i", powerHitCooldown / 60 + 1)
-						cooldown_color = rl.Color{150, 150, 150, 255}  // Gray when on cooldown
+						cooldown_color = rl.Color{150, 150, 150, 255} // Gray when on cooldown
 					} else {
 						cooldown_text = "Power Hit: ENTER"
-						cooldown_color = mode_config.accent_color  // Highlight when ready
+						cooldown_color = mode_config.accent_color // Highlight when ready
 					}
 					text_size: i32 = 16
 					text_width := rl.MeasureText(cooldown_text, text_size)
@@ -533,20 +555,30 @@ main :: proc() {
 						if rl.IsKeyPressed(rl.KeyboardKey.ENTER) && powerHitCooldown == 0 {
 							// Check if ball is close enough to P1 for power hit
 							paddle_radius := p1.dim.x
-							p1_center := m.float2{p1.pos.x + paddle_radius, p1.pos.y + p1.dim.y / 2}
+							p1_center := m.float2 {
+								p1.pos.x + paddle_radius,
+								p1.pos.y + p1.dim.y / 2,
+							}
 							dist_to_ball := m.distance(ball.pos, p1_center)
-							hit_range: f32 = 60.0  // Can hit from slightly farther away
+							hit_range: f32 = 60.0 // Can hit from slightly farther away
 
 							if dist_to_ball < hit_range {
 								// Power hit! Launch ball toward opponent at high speed
 								// Direction: mostly horizontal (toward opponent) with slight Y angle
-								y_offset := (ball.pos.y - p1_center.y) / paddle_radius  // Normalized -1 to 1
-								direction := m.float2{0.95, y_offset * 0.15}  // Strong horizontal bias
+								y_offset := (ball.pos.y - p1_center.y) / paddle_radius // Normalized -1 to 1
+								p1_on_left := p1.pos.x < f32(WIN_DIM.x / 2)
+								x_dir: f32
+								if p1_on_left {
+									x_dir = 0.95
+								} else {
+									x_dir = -0.95
+								}
+								direction := m.float2{x_dir, y_offset * 0.15} // Launch toward opponent
 								direction = m.normalize(direction)
-								ball.vel = direction * 6.0  // High speed launch
-								powerHitCooldown = 120  // 2 second cooldown
-								powerHitFlash = 15      // Flash effect
-								rl.PlaySound(strike_fx3)  // Play power hit sound
+								ball.vel = direction * 6.0 // High speed launch
+								powerHitCooldown = 120 // 2 second cooldown
+								powerHitFlash = 15 // Flash effect
+								rl.PlaySound(strike_fx3) // Play power hit sound
 								p1.hit = true
 							}
 						}
@@ -554,7 +586,10 @@ main :: proc() {
 						// CPU power hit AI
 						if !mode_config.single_player && cpuPowerHitCooldown == 0 {
 							paddle_radius := p2.dim.x
-							p2_center := m.float2{p2.pos.x + paddle_radius, p2.pos.y + p2.dim.y / 2}
+							p2_center := m.float2 {
+								p2.pos.x + paddle_radius,
+								p2.pos.y + p2.dim.y / 2,
+							}
 							dist_to_ball := m.distance(ball.pos, p2_center)
 							hit_range: f32 = 60.0
 
@@ -563,7 +598,7 @@ main :: proc() {
 							if dist_to_ball < hit_range && ball_speed < 2.0 {
 								// CPU power hit!
 								y_offset := (ball.pos.y - p2_center.y) / paddle_radius
-								direction := m.float2{-0.95, y_offset * 0.15}  // Toward left (opponent)
+								direction := m.float2{-0.95, y_offset * 0.15} // Toward left (opponent)
 								direction = m.normalize(direction)
 								ball.vel = direction * 6.0
 								cpuPowerHitCooldown = 120
@@ -596,7 +631,9 @@ main :: proc() {
 						if dist_to_p1 < collision_radius + paddle_radius {
 							// Push ball away from paddle to prevent multiple collisions
 							collision_normal := m.normalize(ball.pos - p1_center)
-							ball.pos = p1_center + collision_normal * (collision_radius + paddle_radius + 1.0)
+							ball.pos =
+								p1_center +
+								collision_normal * (collision_radius + paddle_radius + 1.0)
 
 							handlePaddleCollision(&p1, strike_fx1, strike_fx3)
 							rallyCount += 1
@@ -607,12 +644,18 @@ main :: proc() {
 						if dist_to_p2 < collision_radius + paddle_radius {
 							// Push ball away from paddle to prevent multiple collisions
 							collision_normal := m.normalize(ball.pos - p2_center)
-							ball.pos = p2_center + collision_normal * (collision_radius + paddle_radius + 1.0)
+							ball.pos =
+								p2_center +
+								collision_normal * (collision_radius + paddle_radius + 1.0)
 
 							handlePaddleCollision(&p2, strike_fx1, strike_fx3)
 							rallyCount += 1
 						}
-					} else if rl.CheckCollisionCircleRec({ball.pos.x, ball.pos.y}, collision_radius, P1) {
+					} else if rl.CheckCollisionCircleRec(
+						{ball.pos.x, ball.pos.y},
+						collision_radius,
+						P1,
+					) {
 						// Determine which side P1 is on for proper collision detection
 						p1_on_left := p1.pos.x < f32(WIN_DIM.x / 2)
 
@@ -637,16 +680,19 @@ main :: proc() {
 							p1.hit = true
 						} else {
 							// Normal pong: only hit from correct side based on position
-							ball_coming_toward_p1 := (p1_on_left && ball.vel.x < 0) || (!p1_on_left && ball.vel.x > 0)
+							ball_coming_toward_p1 :=
+								(p1_on_left && ball.vel.x < 0) || (!p1_on_left && ball.vel.x > 0)
 							if ball_coming_toward_p1 {
 								handlePaddleCollision(&p1, strike_fx1, strike_fx3)
 							}
 						}
 						rallyCount += 1
-					} else if !mode_config.single_player && rl.CheckCollisionCircleRec({ball.pos.x, ball.pos.y}, collision_radius, P2) {
+					} else if !mode_config.single_player &&
+					   rl.CheckCollisionCircleRec({ball.pos.x, ball.pos.y}, collision_radius, P2) {
 						// Determine which side P2 is on for proper collision detection
 						p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
-						ball_coming_toward_p2 := (p2_on_left && ball.vel.x < 0) || (!p2_on_left && ball.vel.x > 0)
+						ball_coming_toward_p2 :=
+							(p2_on_left && ball.vel.x < 0) || (!p2_on_left && ball.vel.x > 0)
 
 						if ball_coming_toward_p2 {
 							handlePaddleCollision(&p2, strike_fx1, strike_fx3)
@@ -680,14 +726,15 @@ main :: proc() {
 					}
 
 					// Score logic
+					// BUG: broken after side switch
 					if mode_config.single_player {
 						// Squash: lose point when ball stops moving
 						ball_speed := m.length(ball.vel)
-						if ball_speed < 0.5 {  // Ball essentially stopped
+						if ball_speed < 0.5 { 	// Ball essentially stopped
 							scoreCounter += 1
 
 							if scoreCounter > 60 {
-								p2.scr += 1  // "Wall" scores (player error)
+								p2.scr += 1 // "Wall" scores (player error)
 								rl.PlaySound(score_fx2)
 
 								// Reset positions
@@ -708,7 +755,7 @@ main :: proc() {
 								scoreFlashTimer = 30
 							}
 						} else {
-							scoreCounter = 0  // Reset if ball is still moving
+							scoreCounter = 0 // Reset if ball is still moving
 						}
 					} else {
 						// Multiplayer modes scoring
@@ -724,7 +771,8 @@ main :: proc() {
 							// Left side - check if ball crossed goal line (continuous collision)
 							if ball_prev_pos.x >= goal_line_left && ball.pos.x < goal_line_left {
 								// Ball crossed left goal line this frame
-								in_goal_zone := ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
+								in_goal_zone :=
+									ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
 
 								if in_goal_zone {
 									// Goal scored! Award point to player on RIGHT side
@@ -760,9 +808,11 @@ main :: proc() {
 									ball.vel.x = -ball.vel.x * mode_config.wall_dampening
 									rl.PlaySound(strike_fx2)
 								}
-							} else if ball.pos.x - collision_radius < goal_depth && ball.vel.x < 0 {
+							} else if ball.pos.x - collision_radius < goal_depth &&
+							   ball.vel.x < 0 {
 								// Ball approaching left wall - check if it will hit wall
-								in_goal_zone := ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
+								in_goal_zone :=
+									ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
 								if !in_goal_zone {
 									// Ball hit wall outside goal - bounce
 									ball.pos.x = goal_depth + collision_radius
@@ -774,7 +824,8 @@ main :: proc() {
 							// Right side - check if ball crossed goal line (continuous collision)
 							if ball_prev_pos.x <= goal_line_right && ball.pos.x > goal_line_right {
 								// Ball crossed right goal line this frame
-								in_goal_zone := ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
+								in_goal_zone :=
+									ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
 
 								if in_goal_zone {
 									// Goal scored! Award point to player on LEFT side
@@ -810,9 +861,12 @@ main :: proc() {
 									ball.vel.x = -ball.vel.x * mode_config.wall_dampening
 									rl.PlaySound(strike_fx2)
 								}
-							} else if ball.pos.x + collision_radius > f32(WIN_DIM.x) - goal_depth && ball.vel.x > 0 {
+							} else if ball.pos.x + collision_radius >
+								   f32(WIN_DIM.x) - goal_depth &&
+							   ball.vel.x > 0 {
 								// Ball approaching right wall - check if it will hit wall
-								in_goal_zone := ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
+								in_goal_zone :=
+									ball.pos.y >= goal_y_start && ball.pos.y <= goal_y_end
 								if !in_goal_zone {
 									// Ball hit wall outside goal - bounce
 									ball.pos.x = f32(WIN_DIM.x) - goal_depth - collision_radius
@@ -826,8 +880,14 @@ main :: proc() {
 								scoreCounter += 1
 
 								if scoreCounter > 60 {
-									p2.scr += 1
-									rl.PlaySound(score_fx2)
+									p1_on_left := p1.pos.x < f32(WIN_DIM.x / 2)
+									if p1_on_left {
+										p2.scr += 1
+										rl.PlaySound(score_fx2)
+									} else {
+										p1.scr += 1
+										rl.PlaySound(score_fx1)
+									}
 
 									// Reset positions
 									p1.pos.y = f32(WIN_DIM.y / 2)
@@ -850,8 +910,14 @@ main :: proc() {
 								scoreCounter += 1
 
 								if scoreCounter > 60 {
-									p1.scr += 1
-									rl.PlaySound(score_fx1)
+									p1_on_left := p1.pos.x < f32(WIN_DIM.x / 2)
+									if p1_on_left {
+										p1.scr += 1
+										rl.PlaySound(score_fx1)
+									} else {
+										p2.scr += 1
+										rl.PlaySound(score_fx2)
+									}
 
 									// Reset positions
 									p1.pos.y = f32(WIN_DIM.y / 2)
@@ -905,7 +971,13 @@ main :: proc() {
 					title_text: cstring = "Return to Menu?"
 					title_size: i32 = 30
 					title_width := rl.MeasureText(title_text, title_size)
-					rl.DrawText(title_text, WIN_DIM.x / 2 - title_width / 2, box_y + 30, title_size, theme.txt_dark)
+					rl.DrawText(
+						title_text,
+						WIN_DIM.x / 2 - title_width / 2,
+						box_y + 30,
+						title_size,
+						theme.txt_dark,
+					)
 
 					// Instructions
 					inst1: cstring = "ENTER - Yes, quit to menu"
@@ -914,15 +986,27 @@ main :: proc() {
 					inst1_width := rl.MeasureText(inst1, inst_size)
 					inst2_width := rl.MeasureText(inst2, inst_size)
 
-					rl.DrawText(inst1, WIN_DIM.x / 2 - inst1_width / 2, box_y + 80, inst_size, mode_config.accent_color)
-					rl.DrawText(inst2, WIN_DIM.x / 2 - inst2_width / 2, box_y + 105, inst_size, theme.txt_light)
+					rl.DrawText(
+						inst1,
+						WIN_DIM.x / 2 - inst1_width / 2,
+						box_y + 80,
+						inst_size,
+						mode_config.accent_color,
+					)
+					rl.DrawText(
+						inst2,
+						WIN_DIM.x / 2 - inst2_width / 2,
+						box_y + 105,
+						inst_size,
+						theme.txt_light,
+					)
 				}
 
-			};break
+			}; break
 		case .END:
 			{
 				drawEndScreen()
-			};break
+			}; break
 		}
 
 		rl.EndDrawing()
@@ -972,7 +1056,7 @@ P1_START_POS: i32 : 30
 P2_START_POS: i32 : 555
 PLAYERS_WIDTH: f32 : 15.0
 PLAYERS_HEIGHT: f32 : 60.0
-P1_SPEED: f32 = 2.5  // Faster for air hockey
+P1_SPEED: f32 = 2.5 // Faster for air hockey
 CPU_SPEED: f32 = 1.5
 
 // Scores
@@ -986,190 +1070,190 @@ getModeConfig :: proc(mode: GameMode) -> ModeConfig {
 	switch mode {
 	case .PONG:
 		return ModeConfig {
-			name = "CLASSIC PONG",
-			description = "Retro table tennis action",
+			name                = "CLASSIC PONG",
+			description         = "Retro table tennis action",
 
 			// Physics - classic pong feel
-			ball_speed_mult = BALL_SPEED_MULT,
-			friction = 1.0,
-			wall_dampening = DAMP_WALL,
-			paddle_dampening = BALL_SPEED_MULT,
-			spin_dampening = DAMP_SPIN,
-			spin_acceleration = ACCEL_SPIN,
-			ball_scale_at_net = false,
-			net_speed_modifier = 1.0,
-			ball_size_mult = 1.0,
+			ball_speed_mult     = BALL_SPEED_MULT,
+			friction            = 1.0,
+			wall_dampening      = DAMP_WALL,
+			paddle_dampening    = BALL_SPEED_MULT,
+			spin_dampening      = DAMP_SPIN,
+			spin_acceleration   = ACCEL_SPIN,
+			ball_scale_at_net   = false,
+			net_speed_modifier  = 1.0,
+			ball_size_mult      = 1.0,
 
 			// Gameplay
-			win_score = 3,  // Best of 3 games (first to 2 games wins match)
-			single_player = false,
-			has_net = false,
-			net_height = 0,
+			win_score           = 3, // Best of 3 games (first to 2 games wins match)
+			single_player       = false,
+			has_net             = false,
+			net_height          = 0,
 
 			// Visual - classic black and white
-			bg_color = rl.Color{0, 0, 0, 255},        // Black
-			court_primary = rl.Color{255, 255, 255, 255}, // White
-			court_secondary = rl.Color{128, 128, 128, 255}, // Gray
-			paddle_color = rl.Color{255, 255, 255, 255}, // White (will be overridden per player)
-			ball_color = rl.Color{255, 255, 255, 255},   // White
-			text_color = rl.Color{255, 255, 255, 255},   // White
-			accent_color = rl.Color{200, 200, 200, 255}, // Light gray
+			bg_color            = rl.Color{0, 0, 0, 255}, // Black
+			court_primary       = rl.Color{255, 255, 255, 255}, // White
+			court_secondary     = rl.Color{128, 128, 128, 255}, // Gray
+			paddle_color        = rl.Color{255, 255, 255, 255}, // White (will be overridden per player)
+			ball_color          = rl.Color{255, 255, 255, 255}, // White
+			text_color          = rl.Color{255, 255, 255, 255}, // White
+			accent_color        = rl.Color{200, 200, 200, 255}, // Light gray
 
 			// UI
-			show_rally_counter = true,
-			rally_threshold = 10,
-			countdown_enabled = true,
-			paddle_rounded = false,
+			show_rally_counter  = true,
+			rally_threshold     = 10,
+			countdown_enabled   = true,
+			paddle_rounded      = false,
 
 			// Paddle movement
-			allow_x_movement = false,
-			paddle_momentum = 1.0,  // No momentum
+			allow_x_movement    = false,
+			paddle_momentum     = 1.0, // No momentum
 			paddle_acceleration = 1.0,
 
 			// Goals
-			has_goals = false,
-			goal_size = 1.0,
+			has_goals           = false,
+			goal_size           = 1.0,
 		}
 
 	case .AIR_HOCKEY:
 		return ModeConfig {
-			name = "AIR HOCKEY",
-			description = "Fast frictionless puck action",
+			name                = "AIR HOCKEY",
+			description         = "Fast frictionless puck action",
 
 			// Physics - very fast with sliding puck
-			ball_speed_mult = 1.6,  // Much faster
-			friction = 0.995,  // Slight friction for puck sliding
-			wall_dampening = 0.95,  // Bouncy walls
-			paddle_dampening = 1.05,  // Minimal speed boost on hit
-			spin_dampening = 0.95,
-			spin_acceleration = 1.2,
-			ball_scale_at_net = false,
-			net_speed_modifier = 1.0,
-			ball_size_mult = 1.0,
+			ball_speed_mult     = 1.6, // Much faster
+			friction            = 0.995, // Slight friction for puck sliding
+			wall_dampening      = 0.95, // Bouncy walls
+			paddle_dampening    = 1.05, // Minimal speed boost on hit
+			spin_dampening      = 0.95,
+			spin_acceleration   = 1.2,
+			ball_scale_at_net   = false,
+			net_speed_modifier  = 1.0,
+			ball_size_mult      = 1.0,
 
 			// Gameplay
-			win_score = 3,  // Best of 3 games (first to 2 games wins match)
-			single_player = false,
-			has_net = false,
-			net_height = 0,
+			win_score           = 3, // Best of 3 games (first to 2 games wins match)
+			single_player       = false,
+			has_net             = false,
+			net_height          = 0,
 
 			// Visual - white ice rink
-			bg_color = rl.Color{240, 245, 250, 255},      // White ice
-			court_primary = rl.Color{180, 190, 200, 255}, // Light gray markings
-			court_secondary = rl.Color{100, 120, 140, 255}, // Blue-gray center line
-			paddle_color = rl.Color{255, 50, 50, 255},  // Red (will be overridden per player)
-			ball_color = rl.Color{20, 20, 20, 255},   // Black puck
-			text_color = rl.Color{40, 40, 40, 255},   // Dark gray text
-			accent_color = rl.Color{255, 200, 0, 255}, // Gold for goals
+			bg_color            = rl.Color{240, 245, 250, 255}, // White ice
+			court_primary       = rl.Color{180, 190, 200, 255}, // Light gray markings
+			court_secondary     = rl.Color{100, 120, 140, 255}, // Blue-gray center line
+			paddle_color        = rl.Color{255, 50, 50, 255}, // Red (will be overridden per player)
+			ball_color          = rl.Color{20, 20, 20, 255}, // Black puck
+			text_color          = rl.Color{40, 40, 40, 255}, // Dark gray text
+			accent_color        = rl.Color{255, 200, 0, 255}, // Gold for goals
 
 			// UI
-			show_rally_counter = true,
-			rally_threshold = 15,
-			countdown_enabled = true,
-			paddle_rounded = true,  // Circular mallets
+			show_rally_counter  = true,
+			rally_threshold     = 15,
+			countdown_enabled   = true,
+			paddle_rounded      = true, // Circular mallets
 
 			// Paddle movement
-			allow_x_movement = true,  // Can move in their half
-			paddle_momentum = 0.92,  // More dramatic sliding effect
-			paddle_acceleration = 0.25,  // Gradual acceleration
+			allow_x_movement    = true, // Can move in their half
+			paddle_momentum     = 0.92, // More dramatic sliding effect
+			paddle_acceleration = 0.25, // Gradual acceleration
 
 			// Goals
-			has_goals = true,
-			goal_size = 0.4,  // 40% of screen height
+			has_goals           = true,
+			goal_size           = 0.4, // 40% of screen height
 		}
 
 	case .SQUASH:
 		return ModeConfig {
-			name = "SQUASH",
-			description = "Solo wall training mode",
+			name                = "SQUASH",
+			description         = "Solo wall training mode",
 
 			// Physics - very fast, smaller ball
-			ball_speed_mult = 2.0,  // Very fast
-			friction = 1.0,
-			wall_dampening = 0.85,
-			paddle_dampening = 1.2,
-			spin_dampening = 0.8,
-			spin_acceleration = 1.3,
-			ball_scale_at_net = false,
-			net_speed_modifier = 1.0,
-			ball_size_mult = 0.6,  // Smaller ball
+			ball_speed_mult     = 2.0, // Very fast
+			friction            = 1.0,
+			wall_dampening      = 0.85,
+			paddle_dampening    = 1.2,
+			spin_dampening      = 0.8,
+			spin_acceleration   = 1.3,
+			ball_scale_at_net   = false,
+			net_speed_modifier  = 1.0,
+			ball_size_mult      = 0.6, // Smaller ball
 
 			// Gameplay
-			win_score = 3,  // For easier testing
-			single_player = true,
-			has_net = false,
-			net_height = 0,
+			win_score           = 3, // For easier testing
+			single_player       = true,
+			has_net             = false,
+			net_height          = 0,
 
 			// Visual - green court theme
-			bg_color = rl.Color{20, 30, 25, 255},        // Dark green-grey
-			court_primary = rl.Color{80, 140, 90, 255},  // Court green
-			court_secondary = rl.Color{60, 100, 70, 255}, // Darker green
-			paddle_color = rl.Color{220, 180, 100, 255}, // Wood/tan
-			ball_color = rl.Color{50, 50, 55, 255},      // Black rubber
-			text_color = rl.Color{200, 220, 180, 255},   // Light green
-			accent_color = rl.Color{255, 100, 100, 255}, // Red marker
+			bg_color            = rl.Color{20, 30, 25, 255}, // Dark green-grey
+			court_primary       = rl.Color{80, 140, 90, 255}, // Court green
+			court_secondary     = rl.Color{60, 100, 70, 255}, // Darker green
+			paddle_color        = rl.Color{220, 180, 100, 255}, // Wood/tan
+			ball_color          = rl.Color{50, 50, 55, 255}, // Black rubber
+			text_color          = rl.Color{200, 220, 180, 255}, // Light green
+			accent_color        = rl.Color{255, 100, 100, 255}, // Red marker
 
 			// UI
-			show_rally_counter = true,
-			rally_threshold = 20,  // Squash has longer rallies
-			countdown_enabled = true,
-			paddle_rounded = false,
+			show_rally_counter  = true,
+			rally_threshold     = 20, // Squash has longer rallies
+			countdown_enabled   = true,
+			paddle_rounded      = false,
 
 			// Paddle movement
-			allow_x_movement = true,  // Can move forward/backward
-			paddle_momentum = 1.0,  // No momentum
+			allow_x_movement    = true, // Can move forward/backward
+			paddle_momentum     = 1.0, // No momentum
 			paddle_acceleration = 1.0,
 
 			// Goals
-			has_goals = false,
-			goal_size = 1.0,
+			has_goals           = false,
+			goal_size           = 1.0,
 		}
 
 	case .TENNIS:
 		return ModeConfig {
-			name = "TENNIS",
-			description = "Over the net competition",
+			name                = "TENNIS",
+			description         = "Over the net competition",
 
 			// Physics - ball scales and slows at net to simulate height
-			ball_speed_mult = 1.1,
-			friction = 1.0,
-			wall_dampening = 0.7,
-			paddle_dampening = 1.12,
-			spin_dampening = 0.8,
-			spin_acceleration = 1.5,
-			ball_scale_at_net = true,  // Ball grows larger near net
-			net_speed_modifier = 0.85,  // Ball slower at net (peak of arc)
-			ball_size_mult = 1.0,
+			ball_speed_mult     = 1.1,
+			friction            = 1.0,
+			wall_dampening      = 0.7,
+			paddle_dampening    = 1.12,
+			spin_dampening      = 0.8,
+			spin_acceleration   = 1.5,
+			ball_scale_at_net   = true, // Ball grows larger near net
+			net_speed_modifier  = 0.85, // Ball slower at net (peak of arc)
+			ball_size_mult      = 1.0,
 
 			// Gameplay
-			win_score = 3,  // For easier testing
-			single_player = false,
-			has_net = true,
-			net_height = f32(WIN_DIM.y),  // Full screen height
+			win_score           = 3, // For easier testing
+			single_player       = false,
+			has_net             = true,
+			net_height          = f32(WIN_DIM.y), // Full screen height
 
 			// Visual - grass court theme
-			bg_color = rl.Color{90, 140, 80, 255},       // Grass green
-			court_primary = rl.Color{200, 180, 140, 255}, // Clay/baseline
-			court_secondary = rl.Color{240, 240, 240, 255}, // White lines
-			paddle_color = rl.Color{255, 200, 100, 255}, // Racquet gold
-			ball_color = rl.Color{220, 255, 100, 255},   // Tennis ball yellow
-			text_color = rl.Color{255, 255, 255, 255},   // White
-			accent_color = rl.Color{100, 180, 255, 255}, // Sky blue
+			bg_color            = rl.Color{90, 140, 80, 255}, // Grass green
+			court_primary       = rl.Color{200, 180, 140, 255}, // Clay/baseline
+			court_secondary     = rl.Color{240, 240, 240, 255}, // White lines
+			paddle_color        = rl.Color{255, 200, 100, 255}, // Racquet gold
+			ball_color          = rl.Color{220, 255, 100, 255}, // Tennis ball yellow
+			text_color          = rl.Color{255, 255, 255, 255}, // White
+			accent_color        = rl.Color{100, 180, 255, 255}, // Sky blue
 
 			// UI
-			show_rally_counter = true,
-			rally_threshold = 12,
-			countdown_enabled = true,
-			paddle_rounded = false,
+			show_rally_counter  = true,
+			rally_threshold     = 12,
+			countdown_enabled   = true,
+			paddle_rounded      = false,
 
 			// Paddle movement
-			allow_x_movement = false,
-			paddle_momentum = 1.0,  // No momentum
+			allow_x_movement    = false,
+			paddle_momentum     = 1.0, // No momentum
 			paddle_acceleration = 1.0,
 
 			// Goals
-			has_goals = false,
-			goal_size = 1.0,
+			has_goals           = false,
+			goal_size           = 1.0,
 		}
 	}
 
@@ -1234,9 +1318,13 @@ drawModeSelect :: proc(selected: GameMode) {
 		if is_selected {
 			// Highlight selected with pulsing border
 			border_thickness: i32 = 4
-			rl.DrawRectangle(x - border_thickness, y - border_thickness,
-				box_width + border_thickness * 2, box_height + border_thickness * 2,
-				config.accent_color)
+			rl.DrawRectangle(
+				x - border_thickness,
+				y - border_thickness,
+				box_width + border_thickness * 2,
+				box_height + border_thickness * 2,
+				config.accent_color,
+			)
 			// Lift effect
 			y -= 5
 		}
@@ -1250,7 +1338,13 @@ drawModeSelect :: proc(selected: GameMode) {
 		name_y := y + 10
 		for line in name_lines {
 			line_width := rl.MeasureText(line, name_size)
-			rl.DrawText(line, x + box_width / 2 - line_width / 2, name_y, name_size, config.text_color)
+			rl.DrawText(
+				line,
+				x + box_width / 2 - line_width / 2,
+				name_y,
+				name_size,
+				config.text_color,
+			)
 			name_y += name_size + 2
 		}
 
@@ -1289,7 +1383,13 @@ drawModeSelect :: proc(selected: GameMode) {
 		desc_lines := getWrappedText(config.description, desc_size, box_width - 10)
 		for line in desc_lines {
 			line_width := rl.MeasureText(line, desc_size)
-			rl.DrawText(line, x + box_width / 2 - line_width / 2, desc_y, desc_size, config.text_color)
+			rl.DrawText(
+				line,
+				x + box_width / 2 - line_width / 2,
+				desc_y,
+				desc_size,
+				config.text_color,
+			)
 			desc_y += desc_size + 2
 		}
 
@@ -1297,7 +1397,13 @@ drawModeSelect :: proc(selected: GameMode) {
 		score_text := rl.TextFormat("First to %i", config.win_score)
 		score_size: i32 = 11
 		score_width := rl.MeasureText(score_text, score_size)
-		rl.DrawText(score_text, x + box_width / 2 - score_width / 2, y + box_height - 20, score_size, config.accent_color)
+		rl.DrawText(
+			score_text,
+			x + box_width / 2 - score_width / 2,
+			y + box_height - 20,
+			score_size,
+			config.accent_color,
+		)
 	}
 }
 
@@ -1323,13 +1429,37 @@ drawGoals :: proc() {
 	rl.DrawRectangle(0, goal_y_start, goal_depth, goal_height, mode_config.accent_color)
 	// Left goal walls (top and bottom)
 	rl.DrawRectangle(0, 0, goal_depth, goal_y_start, mode_config.court_primary)
-	rl.DrawRectangle(0, goal_y_start + goal_height, goal_depth, WIN_DIM.y - (goal_y_start + goal_height), mode_config.court_primary)
+	rl.DrawRectangle(
+		0,
+		goal_y_start + goal_height,
+		goal_depth,
+		WIN_DIM.y - (goal_y_start + goal_height),
+		mode_config.court_primary,
+	)
 
 	// Right goal (P1 scores here)
-	rl.DrawRectangle(WIN_DIM.x - goal_depth, goal_y_start, goal_depth, goal_height, mode_config.accent_color)
+	rl.DrawRectangle(
+		WIN_DIM.x - goal_depth,
+		goal_y_start,
+		goal_depth,
+		goal_height,
+		mode_config.accent_color,
+	)
 	// Right goal walls (top and bottom)
-	rl.DrawRectangle(WIN_DIM.x - goal_depth, 0, goal_depth, goal_y_start, mode_config.court_primary)
-	rl.DrawRectangle(WIN_DIM.x - goal_depth, goal_y_start + goal_height, goal_depth, WIN_DIM.y - (goal_y_start + goal_height), mode_config.court_primary)
+	rl.DrawRectangle(
+		WIN_DIM.x - goal_depth,
+		0,
+		goal_depth,
+		goal_y_start,
+		mode_config.court_primary,
+	)
+	rl.DrawRectangle(
+		WIN_DIM.x - goal_depth,
+		goal_y_start + goal_height,
+		goal_depth,
+		WIN_DIM.y - (goal_y_start + goal_height),
+		mode_config.court_primary,
+	)
 }
 
 drawNet :: proc() {
@@ -1379,11 +1509,17 @@ drawScores :: proc(flashTimer: i32) {
 		score_color = rl.ColorAlpha(mode_config.accent_color, alpha)
 	}
 
-	rl.DrawText(p1_text, p1_x, score_y, score_size, score_color)
-	rl.DrawText(p2_text, p2_x, score_y, score_size, score_color)
+	rl.DrawText(p1_text, p1_x, score_y, score_size, p1.col)
+	rl.DrawText(p2_text, p2_x, score_y, score_size, p2.col)
 
 	// Score separator
-	rl.DrawText("-", WIN_DIM.x / 2 - rl.MeasureText("-", 40) / 2, score_y + 10, 40, theme.txt_light)
+	rl.DrawText(
+		"-",
+		WIN_DIM.x / 2 - rl.MeasureText("-", 40) / 2,
+		score_y + 10,
+		40,
+		theme.txt_light,
+	)
 
 	// Games won (match score) - display below point scores
 	games_size: i32 = 20
@@ -1457,13 +1593,13 @@ cpuAI :: proc() {
 			if ball.vel.x < 0 {
 				// Ball coming toward CPU (moving left) - move forward to intercept
 				if paddle_center_x < ball.pos.x - 40 {
-					target_vel.x = p2.spd * 0.7  // Move forward (right)
+					target_vel.x = p2.spd * 0.7 // Move forward (right)
 				}
 			} else {
 				// Ball moving away (moving right) - retreat toward back of zone
 				retreat_pos: f32 = 80.0
 				if paddle_center_x > retreat_pos {
-					target_vel.x = -p2.spd * 0.5  // Move back (left)
+					target_vel.x = -p2.spd * 0.5 // Move back (left)
 				}
 			}
 		} else {
@@ -1471,13 +1607,13 @@ cpuAI :: proc() {
 			if ball.vel.x > 0 {
 				// Ball coming toward CPU (moving right) - move forward to intercept
 				if paddle_center_x > ball.pos.x + 40 {
-					target_vel.x = -p2.spd * 0.7  // Move forward (left)
+					target_vel.x = -p2.spd * 0.7 // Move forward (left)
 				}
 			} else {
 				// Ball moving away (moving left) - retreat toward back of zone
 				retreat_pos := f32(WIN_DIM.x) - 80.0
 				if paddle_center_x < retreat_pos {
-					target_vel.x = p2.spd * 0.5  // Move back (right)
+					target_vel.x = p2.spd * 0.5 // Move back (right)
 				}
 			}
 		}
@@ -1521,8 +1657,8 @@ setBoundaries :: proc() {
 	if mode_config.allow_x_movement {
 		if mode_config.single_player {
 			// Squash: can move across most of court
-			min_x: f32 = 15  // Past back wall
-			max_x: f32 = f32(WIN_DIM.x) - 20 - p1.dim.x  // Before front wall
+			min_x: f32 = 15 // Past back wall
+			max_x: f32 = f32(WIN_DIM.x) - 20 - p1.dim.x // Before front wall
 			if p1.pos.x < min_x {
 				p1.pos.x = min_x
 				p1.vel.x = 0
@@ -1665,7 +1801,7 @@ moveBall :: proc() {
 		max_dist := f32(WIN_DIM.x / 2)
 
 		// Interpolate speed: 1.0 at paddles, net_speed_modifier at net
-		t := 1.0 - (dist_from_net / max_dist)  // 0 at paddles, 1 at net
+		t := 1.0 - (dist_from_net / max_dist) // 0 at paddles, 1 at net
 		current_speed_mult := 1.0 + t * (mode_config.net_speed_modifier - 1.0)
 		speed_mult *= current_speed_mult
 	}
@@ -1752,13 +1888,7 @@ drawCountdown :: proc(timer: i32) {
 	alpha := 0.3 + pulse * 0.7
 	color := rl.ColorAlpha(mode_config.accent_color, alpha)
 
-	rl.DrawText(
-		text,
-		WIN_DIM.x / 2 - text_width / 2,
-		WIN_DIM.y / 2 - 60,
-		text_size,
-		color,
-	)
+	rl.DrawText(text, WIN_DIM.x / 2 - text_width / 2, WIN_DIM.y / 2 - 60, text_size, color)
 }
 
 drawRallyCounter :: proc(rallyCount: i32) {
@@ -1771,13 +1901,7 @@ drawRallyCounter :: proc(rallyCount: i32) {
 	text_width := rl.MeasureText(text, text_size)
 
 	// Position in bottom center
-	rl.DrawText(
-		text,
-		WIN_DIM.x / 2 - text_width / 2,
-		WIN_DIM.y - 30,
-		text_size,
-		theme.txt_light,
-	)
+	rl.DrawText(text, WIN_DIM.x / 2 - text_width / 2, WIN_DIM.y - 30, text_size, theme.txt_light)
 
 	// Add excitement for long rallies (mode-specific threshold)
 	threshold := mode_config.rally_threshold
