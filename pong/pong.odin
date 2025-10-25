@@ -148,6 +148,10 @@ main :: proc() {
 
 				if rl.IsKeyDown(rl.KeyboardKey.ENTER) {
 					currentScreen = State.GAME
+					p1.scr = MIN_SCORE
+					p2.scr = MIN_SCORE
+					ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
+					ball.vel = m.float2{rnd.float32_normal(X_MEAN, X_SDEV), rnd.float32_normal(Y_MEAN, Y_SDEV)}
 				}
 			};break
 		}
@@ -206,34 +210,10 @@ main :: proc() {
 						rl.PlaySound(strike_fx2)
 					} else if rl.CheckCollisionCircleRec({ball.pos.x, ball.pos.y}, ball.r, P1) &&
 					   ball.vel.x < 0 {
-						p1.hit = true
-						if rl.IsKeyDown(rl.KeyboardKey.W) {
-							ball.vel.x = -ball.vel.x * DAMP_SPIN
-							ball.vel.y = -ball.vel.y * ACCEL_SPIN
-							rl.PlaySound(strike_fx3)
-						} else if rl.IsKeyDown(rl.KeyboardKey.S) {
-							ball.vel.x = -ball.vel.x * DAMP_SPIN
-							ball.vel.y = -ball.vel.y * ACCEL_SPIN
-							rl.PlaySound(strike_fx3)
-						} else {
-							ball.vel.x = -ball.vel.x * BALL_SPEED_MULT
-							rl.PlaySound(strike_fx1)
-						}
+						handlePaddleCollision(&p1, strike_fx1, strike_fx3)
 					} else if rl.CheckCollisionCircleRec({ball.pos.x, ball.pos.y}, ball.r, P2) &&
 					   ball.vel.x > 0 {
-						p2.hit = true
-						if rl.IsKeyDown(rl.KeyboardKey.W) {
-							ball.vel.x = -ball.vel.x * DAMP_SPIN
-							ball.vel.y = -ball.vel.y * ACCEL_SPIN
-							rl.PlaySound(strike_fx3)
-						} else if rl.IsKeyDown(rl.KeyboardKey.S) {
-							ball.vel.x = -ball.vel.x * DAMP_SPIN
-							ball.vel.y = -ball.vel.y * ACCEL_SPIN
-							rl.PlaySound(strike_fx3)
-						} else {
-							ball.vel.x = -ball.vel.x * BALL_SPEED_MULT
-							rl.PlaySound(strike_fx1)
-						}
+						handlePaddleCollision(&p2, strike_fx1, strike_fx3)
 					}
 
 					if p1.hit == true {
@@ -251,7 +231,7 @@ main :: proc() {
 						if scoreCounter > 60 {
 							p2.scr += 1
 							rl.PlaySound(score_fx2)
-							ball.pos.x = f32(WIN_DIM.x / 2)
+							ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
 							ball.vel = m.float2 {
 								rnd.float32_normal(X_MEAN, X_SDEV),
 								rnd.float32_normal(Y_MEAN, Y_SDEV),
@@ -264,7 +244,7 @@ main :: proc() {
 						if scoreCounter > 60 {
 							p1.scr += 1
 							rl.PlaySound(score_fx1)
-							ball.pos.x = f32(WIN_DIM.x / 2)
+							ball.pos = m.float2{f32(WIN_DIM.x / 2), f32(WIN_DIM.y / 2)}
 							ball.vel = m.float2 {
 								rnd.float32_normal(-X_MEAN, X_SDEV),
 								rnd.float32_normal(Y_MEAN, Y_SDEV),
@@ -290,8 +270,6 @@ main :: proc() {
 		case .END:
 			{
 				drawEndScreen()
-				p1.scr = MIN_SCORE
-				p2.scr = MIN_SCORE
 			};break
 		}
 
@@ -411,15 +389,20 @@ cpuAI :: proc() {
 setBoundaries :: proc() {
 	if p1.pos.x < 0 {
 		p1.pos.x = 0
-	} else if p1.pos.y > (f32(WIN_DIM.y) - p1.dim.y) {
+	}
+	if p1.pos.y > (f32(WIN_DIM.y) - p1.dim.y) {
 		p1.pos.y = (f32(WIN_DIM.y) - p1.dim.y)
-	} else if p1.pos.y < 0 {
+	}
+	if p1.pos.y < 0 {
 		p1.pos.y = 0
-	} else if p2.pos.x > (f32(WIN_DIM.x) - p2.dim.x) {
+	}
+	if p2.pos.x > (f32(WIN_DIM.x) - p2.dim.x) {
 		p2.pos.x = (f32(WIN_DIM.x) - p2.dim.x)
-	} else if p2.pos.y > (f32(WIN_DIM.y) - p2.dim.y) {
+	}
+	if p2.pos.y > (f32(WIN_DIM.y) - p2.dim.y) {
 		p2.pos.y = (f32(WIN_DIM.y) - p2.dim.y)
-	} else if p2.pos.y < 0 {
+	}
+	if p2.pos.y < 0 {
 		p2.pos.y = 0
 	}
 }
@@ -446,5 +429,17 @@ trackWinner :: proc() {
 		winner = "Player 2 Wins!"
 	} else {
 		winner = "It's a draw!"
+	}
+}
+
+handlePaddleCollision :: proc(paddle: ^Paddle, strike_normal: rl.Sound, strike_spin: rl.Sound) {
+	paddle.hit = true
+	if rl.IsKeyDown(rl.KeyboardKey.W) || rl.IsKeyDown(rl.KeyboardKey.S) {
+		ball.vel.x = -ball.vel.x * DAMP_SPIN
+		ball.vel.y = -ball.vel.y * ACCEL_SPIN
+		rl.PlaySound(strike_spin)
+	} else {
+		ball.vel.x = -ball.vel.x * BALL_SPEED_MULT
+		rl.PlaySound(strike_normal)
 	}
 }
