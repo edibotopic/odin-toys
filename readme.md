@@ -4,7 +4,7 @@ Little experiments with the Odin programming language.
 
 ## Examples
 
-* Pong game
+* Pongs
 * Node interface
 * `cat` command
 * UI Toolbar with rect cut

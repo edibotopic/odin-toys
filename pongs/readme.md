@@ -1,31 +1,10 @@
-# Sqong
+# Odin Pongs
 
 v0.1.3
 
-Pong-clone written in the [Odin language](http://odin-lang.org/) using the [Raylib](https://www.raylib.com/) programming library.
-The game was made in a weekend to learn Odin and take a break from some infuriating web projects.
+Pong clones written in the [Odin language](http://odin-lang.org/) using the [Raylib](https://www.raylib.com/) programming library.
 
-## Audio
-
-Theme music and score FX are original, quick compositions.
-
-The collision FX consist of my own gently processed mouth sounds.
-
-You are free to reuse both.
-
-## Scope
-
-This is (currently) a bare bones implementation.
-
-A game is first to 4.
-
-Your player is on the left, the CPU player is on the right.
-
-That's it.
-
-# To-do
-
-## Bugs
+# Bugs
 
 - [ ] Hockey: CPU tends to score own goals
 - [ ] Scoring logic still messed up after side switch
@@ -34,12 +13,12 @@ That's it.
 - [ ] Hockey: buggy hit direction behaviour after side switch
 - [ ] Possible audio issues on Linux?
 
-## Priority
+# Priority
 
 - [ ] Improve CPU/AI movement
 - [ ] Less clunky title menu
 
-## Nice-to-haves
+# Nice-to-haves
 
 - [ ] Allow window resize
 - [X] Menu with choices for game mode
@@ -57,4 +36,4 @@ That's it.
 - v0.1.3: game modes, power shot, better physics
 - v0.1.2: added pause, started refactoring, updated readme
 - v0.1.1: added makefile, updated instructions, added links
-- v0.1.0: initial release
+- v0.1.0: initial release of weekend project
