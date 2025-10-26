@@ -468,7 +468,13 @@ main :: proc() {
 					p1_label: cstring = "P1"
 					p1_label_size: i32 = 12
 					p1_label_width := rl.MeasureText(p1_label, p1_label_size)
-					rl.DrawText(p1_label, p1_center_x - p1_label_width / 2, p1_center_y - 30, p1_label_size, p1.col)
+					rl.DrawText(
+						p1_label,
+						p1_center_x - p1_label_width / 2,
+						p1_center_y - 30,
+						p1_label_size,
+						p1.col,
+					)
 
 					if !mode_config.single_player {
 						p2_center_x := i32(p2.pos.x + paddle_radius)
@@ -480,7 +486,13 @@ main :: proc() {
 						p2_label: cstring = "CPU"
 						p2_label_size: i32 = 12
 						p2_label_width := rl.MeasureText(p2_label, p2_label_size)
-						rl.DrawText(p2_label, p2_center_x - p2_label_width / 2, p2_center_y - 30, p2_label_size, p2.col)
+						rl.DrawText(
+							p2_label,
+							p2_center_x - p2_label_width / 2,
+							p2_center_y - 30,
+							p2_label_size,
+							p2.col,
+						)
 					}
 				} else {
 					// Rectangle paddles
@@ -490,7 +502,13 @@ main :: proc() {
 					p1_label: cstring = "P1"
 					p1_label_size: i32 = 12
 					p1_label_width := rl.MeasureText(p1_label, p1_label_size)
-					rl.DrawText(p1_label, i32(p1.pos.x + p1.dim.x / 2) - p1_label_width / 2, i32(p1.pos.y) - 20, p1_label_size, p1.col)
+					rl.DrawText(
+						p1_label,
+						i32(p1.pos.x + p1.dim.x / 2) - p1_label_width / 2,
+						i32(p1.pos.y) - 20,
+						p1_label_size,
+						p1.col,
+					)
 
 					if !mode_config.single_player {
 						rl.DrawRectangleRounded(P2, 0.7, 0, p2.col)
@@ -499,7 +517,13 @@ main :: proc() {
 						p2_label: cstring = "CPU"
 						p2_label_size: i32 = 12
 						p2_label_width := rl.MeasureText(p2_label, p2_label_size)
-						rl.DrawText(p2_label, i32(p2.pos.x + p2.dim.x / 2) - p2_label_width / 2, i32(p2.pos.y) - 20, p2_label_size, p2.col)
+						rl.DrawText(
+							p2_label,
+							i32(p2.pos.x + p2.dim.x / 2) - p2_label_width / 2,
+							i32(p2.pos.y) - 20,
+							p2_label_size,
+							p2.col,
+						)
 					}
 				}
 
@@ -538,7 +562,9 @@ main :: proc() {
 					rl.DrawText(cooldown_text, 10, WIN_DIM.y - 25, text_size, cooldown_color)
 
 					// Catch indicator when holding shift
-					is_catching := rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) || rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
+					is_catching :=
+						rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) ||
+						rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
 					if is_catching {
 						// Display catch timer and warning
 						time_left := CATCH_TIME_LIMIT - p1CatchTimer
@@ -571,7 +597,12 @@ main :: proc() {
 						} else if time_left < 60 {
 							glow_color = rl.Color{255, 150, 0, 255} // Orange as warning
 						}
-						rl.DrawCircle(p1_center_x, p1_center_y, paddle_radius * 1.3, rl.ColorAlpha(glow_color, 0.3))
+						rl.DrawCircle(
+							p1_center_x,
+							p1_center_y,
+							paddle_radius * 1.3,
+							rl.ColorAlpha(glow_color, 0.3),
+						)
 					}
 
 					// Flash effect when P1 power hit is used
@@ -642,7 +673,9 @@ main :: proc() {
 					// Check for catch time limit penalties (air hockey only)
 					if mode_config.paddle_rounded && !isServing {
 						// Check P1 catch penalty
-						is_p1_catching := rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) || rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
+						is_p1_catching :=
+							rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) ||
+							rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
 						if is_p1_catching && p1CatchTimer >= CATCH_TIME_LIMIT {
 							// P1 PENALTY: Held too long! Push puck toward own goal
 							p1_on_left := p1.pos.x < f32(WIN_DIM.x / 2)
@@ -667,15 +700,23 @@ main :: proc() {
 						if cpuCatchHoldTimer > 0 && cpuCatchHoldTimer <= 10 {
 							// Time for CPU to shoot! Check if puck is near CPU
 							paddle_radius := p2.dim.x
-							p2_center := m.float2{p2.pos.x + paddle_radius, p2.pos.y + p2.dim.y / 2}
+							p2_center := m.float2 {
+								p2.pos.x + paddle_radius,
+								p2.pos.y + p2.dim.y / 2,
+							}
 							dist_to_ball := m.distance(ball.pos, p2_center)
 
-							if dist_to_ball < paddle_radius * 3 { // Within reasonable range
+							if dist_to_ball < paddle_radius * 3 { 	// Within reasonable range
 								// Release and shoot toward opponent's goal
 								p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
 								goal_target_x: f32 = p2_on_left ? f32(WIN_DIM.x) : 0
 								goal_target_y := f32(WIN_DIM.y / 2) + rnd.float32_range(-50, 50)
-								aim_direction := m.normalize(m.float2{goal_target_x - ball.pos.x, goal_target_y - ball.pos.y})
+								aim_direction := m.normalize(
+									m.float2 {
+										goal_target_x - ball.pos.x,
+										goal_target_y - ball.pos.y,
+									},
+								)
 								ball.vel = aim_direction * 4.5 // Medium speed shot
 								cpuCatchHoldTimer = 0
 								p2CatchTimer = 0
@@ -733,15 +774,23 @@ main :: proc() {
 							p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
 
 							// Check if CPU is in good position (not at risk of own goal)
-							is_safe_to_power_hit := (p2_on_left && p2_center.x > ball.pos.x - 20) ||
-							                        (!p2_on_left && p2_center.x < ball.pos.x + 20)
+							is_safe_to_power_hit :=
+								(p2_on_left && p2_center.x > ball.pos.x - 20) ||
+								(!p2_on_left && p2_center.x < ball.pos.x + 20)
 
-							if dist_to_ball < hit_range && ball_speed < 2.0 && is_safe_to_power_hit {
+							if dist_to_ball < hit_range &&
+							   ball_speed < 2.0 &&
+							   is_safe_to_power_hit {
 								// CPU power hit! Aim toward opponent's goal
 								// Aim for opponent's goal center
 								goal_target_x: f32 = p2_on_left ? f32(WIN_DIM.x) : 0
 								goal_target_y := f32(WIN_DIM.y / 2)
-								aim_direction := m.normalize(m.float2{goal_target_x - p2_center.x, goal_target_y - p2_center.y})
+								aim_direction := m.normalize(
+									m.float2 {
+										goal_target_x - p2_center.x,
+										goal_target_y - p2_center.y,
+									},
+								)
 								ball.vel = aim_direction * 6.0
 								cpuPowerHitCooldown = 120
 								cpuPowerHitFlash = 15
@@ -778,7 +827,9 @@ main :: proc() {
 								collision_normal * (collision_radius + paddle_radius + 1.0)
 
 							// Check if player is holding SHIFT for paddle catching
-							is_catching := rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) || rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
+							is_catching :=
+								rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) ||
+								rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
 							did_catch := false
 
 							if is_catching {
@@ -842,7 +893,12 @@ main :: proc() {
 								// Aim toward opponent's goal
 								goal_target_x: f32 = p2_on_left ? f32(WIN_DIM.x) : 0
 								goal_target_y := f32(WIN_DIM.y / 2) + rnd.float32_range(-50, 50) // Add variation
-								aim_direction := m.normalize(m.float2{goal_target_x - p2_center.x, goal_target_y - p2_center.y})
+								aim_direction := m.normalize(
+									m.float2 {
+										goal_target_x - p2_center.x,
+										goal_target_y - p2_center.y,
+									},
+								)
 								ball.vel = aim_direction * 4.5 // Medium speed shot
 								cpuCatchHoldTimer = 0 // Reset hold timer
 								p2CatchTimer = 0 // Reset catch timer
@@ -1307,8 +1363,8 @@ getModeConfig :: proc(mode: GameMode) -> ModeConfig {
 	switch mode {
 	case .PONG:
 		return ModeConfig {
-			name                = "CLASSIC PONG",
-			description         = "Retro table tennis action",
+			name                = "PONG",
+			description         = "Venue: arcade",
 
 			// Physics - classic pong feel
 			ball_speed_mult     = BALL_SPEED_MULT,
@@ -1355,7 +1411,7 @@ getModeConfig :: proc(mode: GameMode) -> ModeConfig {
 	case .AIR_HOCKEY:
 		return ModeConfig {
 			name                = "AIR HOCKEY",
-			description         = "Fast frictionless puck action",
+			description         = "Venue: basement",
 
 			// Physics - very fast with sliding puck
 			ball_speed_mult     = 1.6, // Much faster
@@ -1402,10 +1458,10 @@ getModeConfig :: proc(mode: GameMode) -> ModeConfig {
 	case .SQUASH:
 		return ModeConfig {
 			name                = "SQUASH",
-			description         = "Solo wall training mode",
+			description         = "Venue: Leisure center",
 
 			// Physics - very fast, smaller ball
-			ball_speed_mult     = 2.0, // Very fast
+			ball_speed_mult     = 2.2, // Very fast
 			friction            = 1.0,
 			wall_dampening      = 0.85,
 			paddle_dampening    = 1.2,
@@ -1449,7 +1505,7 @@ getModeConfig :: proc(mode: GameMode) -> ModeConfig {
 	case .TENNIS:
 		return ModeConfig {
 			name                = "TENNIS",
-			description         = "Over the net competition",
+			description         = "Venue: Country club",
 
 			// Physics - ball scales and slows at net to simulate height
 			ball_speed_mult     = 1.1,
@@ -1832,8 +1888,9 @@ cpuAI :: proc() {
 		// If CPU is between ball and its own goal, it needs to reposition defensively
 		ball_to_goal_x := cpu_goal_x - ball.pos.x
 		cpu_to_goal_x := cpu_goal_x - paddle_center.x
-		is_between_ball_and_goal := (p2_on_left && paddle_center.x < ball.pos.x) ||
-		                            (!p2_on_left && paddle_center.x > ball.pos.x)
+		is_between_ball_and_goal :=
+			(p2_on_left && paddle_center.x < ball.pos.x) ||
+			(!p2_on_left && paddle_center.x > ball.pos.x)
 
 		ball_close_to_goal := m.abs(ball.pos.x - cpu_goal_x) < 200 // Ball is dangerously close
 
@@ -2237,7 +2294,13 @@ drawGamesWonBars :: proc() {
 		if i < p1.games_won {
 			// Filled bar (game won)
 			rl.DrawRectangle(x, y_pos, bar_width, bar_height, theme.p1)
-			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorBrightness(theme.p1, -0.4))
+			rl.DrawRectangleLines(
+				x,
+				y_pos,
+				bar_width,
+				bar_height,
+				rl.ColorBrightness(theme.p1, -0.4),
+			)
 		} else {
 			// Empty outline (game not yet won)
 			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorAlpha(theme.p1, 0.3))
@@ -2251,7 +2314,13 @@ drawGamesWonBars :: proc() {
 		if i < p2.games_won {
 			// Filled bar (game won)
 			rl.DrawRectangle(x, y_pos, bar_width, bar_height, theme.p2)
-			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorBrightness(theme.p2, -0.4))
+			rl.DrawRectangleLines(
+				x,
+				y_pos,
+				bar_width,
+				bar_height,
+				rl.ColorBrightness(theme.p2, -0.4),
+			)
 		} else {
 			// Empty outline (game not yet won)
 			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorAlpha(theme.p2, 0.3))
