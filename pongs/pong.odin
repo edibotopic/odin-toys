@@ -137,6 +137,10 @@ main :: proc() {
 	cpuPowerHitCooldown: i32 = 0 // Cooldown for CPU power hit in air hockey
 	powerHitFlash: i32 = 0 // Flash effect for P1 power hit
 	cpuPowerHitFlash: i32 = 0 // Flash effect for CPU power hit
+	cpuCatchHoldTimer: i32 = 0 // Timer for CPU to hold a caught puck
+	p1CatchTimer: i32 = 0 // How long P1 has been catching (counts up)
+	p2CatchTimer: i32 = 0 // How long P2 has been catching (counts up)
+	CATCH_TIME_LIMIT: i32 : 120 // Max frames to hold puck (2 seconds at 60fps)
 
 	// Colors - will be updated per mode
 	theme.bg_main = mode_config.bg_color
@@ -167,6 +171,11 @@ main :: proc() {
 	score_fx2 := rl.LoadSound("./assets/score4.ogg") // CPU
 	back_fx1 := rl.LoadMusicStream("./assets/tuneSynth.ogg") // Game
 	back_fx2 := rl.LoadMusicStream("./assets/tuneFullLargeWithGap.ogg") // Title
+
+	// Set music to loop
+	back_fx1.looping = true
+	back_fx2.looping = true
+
 	rl.SetSoundVolume(strike_fx1, 0.4)
 
 	// Ball
@@ -179,6 +188,9 @@ main :: proc() {
 	// Pause
 	Paused: bool = false
 	showQuitDialog: bool = false
+
+	// Track previous screen for state transitions
+	previousScreen: State = State.LOGO
 
 	// UPDATE
 	for !rl.WindowShouldClose() {
@@ -196,7 +208,12 @@ main :: proc() {
 			}; break
 		case .TITLE:
 			{
-				rl.PlayMusicStream(back_fx2)
+				// Only start music on state transition
+				if previousScreen != .TITLE {
+					rl.PlayMusicStream(back_fx2)
+				}
+
+				// Update music stream every frame for smooth playback
 				rl.UpdateMusicStream(back_fx2)
 
 				if rl.IsKeyPressed(rl.KeyboardKey.ENTER) {
@@ -205,8 +222,13 @@ main :: proc() {
 			}; break
 		case .MODE_SELECT:
 			{
+				// Only start music on state transition
+				if previousScreen != .MODE_SELECT {
+					rl.PlayMusicStream(back_fx2)
+				}
+
+				// Update music stream every frame for smooth playback
 				rl.UpdateMusicStream(back_fx2)
-				rl.PlayMusicStream(back_fx2)
 
 				// Navigate modes with arrow keys
 				if rl.IsKeyPressed(rl.KeyboardKey.LEFT) {
@@ -250,15 +272,23 @@ main :: proc() {
 					powerHitFlash = 0
 					cpuPowerHitCooldown = 0
 					cpuPowerHitFlash = 0
+					cpuCatchHoldTimer = 0
+					p1CatchTimer = 0
+					p2CatchTimer = 0
 				}
 
 				// No back button - ESC to quit
 			}; break
 		case .GAME:
 			{
-				rl.StopMusicStream(back_fx2)
+				// Only start/stop music on state transition
+				if previousScreen != .GAME {
+					rl.StopMusicStream(back_fx2)
+					rl.PlayMusicStream(back_fx1)
+				}
+
+				// Update music stream every frame for smooth playback
 				rl.UpdateMusicStream(back_fx1)
-				rl.PlayMusicStream(back_fx1)
 
 				if !Paused && !showQuitDialog {
 					rl.SetMusicVolume(back_fx1, 0.8)
@@ -296,6 +326,9 @@ main :: proc() {
 					powerHitFlash = 0
 					cpuPowerHitCooldown = 0
 					cpuPowerHitFlash = 0
+					cpuCatchHoldTimer = 0
+					p1CatchTimer = 0
+					p2CatchTimer = 0
 				}
 
 				// Check for game win (reaching win_score)
@@ -381,6 +414,9 @@ main :: proc() {
 					powerHitFlash = 0
 					cpuPowerHitCooldown = 0
 					cpuPowerHitFlash = 0
+					cpuCatchHoldTimer = 0
+					p1CatchTimer = 0
+					p2CatchTimer = 0
 				}
 			}; break
 		}
@@ -414,6 +450,8 @@ main :: proc() {
 
 				drawScores(scoreFlashTimer)
 
+				drawGamesWonBars()
+
 				// Draw Paddles (mode-specific shape)
 				P1: rl.Rectangle = {f32(p1.pos.x), f32(p1.pos.y), p1.dim.x, p1.dim.y}
 				P2: rl.Rectangle = {f32(p2.pos.x), f32(p2.pos.y), p2.dim.x, p2.dim.y}
@@ -421,25 +459,47 @@ main :: proc() {
 				if mode_config.paddle_rounded {
 					// Circular paddles (air hockey mallets)
 					paddle_radius := p1.dim.x
-					rl.DrawCircle(
-						i32(p1.pos.x + paddle_radius),
-						i32(p1.pos.y + p1.dim.y / 2),
-						paddle_radius,
-						p1.col,
-					)
+					p1_center_x := i32(p1.pos.x + paddle_radius)
+					p1_center_y := i32(p1.pos.y + p1.dim.y / 2)
+
+					rl.DrawCircle(p1_center_x, p1_center_y, paddle_radius, p1.col)
+
+					// Draw P1 label above paddle
+					p1_label: cstring = "P1"
+					p1_label_size: i32 = 12
+					p1_label_width := rl.MeasureText(p1_label, p1_label_size)
+					rl.DrawText(p1_label, p1_center_x - p1_label_width / 2, p1_center_y - 30, p1_label_size, p1.col)
+
 					if !mode_config.single_player {
-						rl.DrawCircle(
-							i32(p2.pos.x + paddle_radius),
-							i32(p2.pos.y + p2.dim.y / 2),
-							paddle_radius,
-							p2.col,
-						)
+						p2_center_x := i32(p2.pos.x + paddle_radius)
+						p2_center_y := i32(p2.pos.y + p2.dim.y / 2)
+
+						rl.DrawCircle(p2_center_x, p2_center_y, paddle_radius, p2.col)
+
+						// Draw P2 label above paddle
+						p2_label: cstring = "CPU"
+						p2_label_size: i32 = 12
+						p2_label_width := rl.MeasureText(p2_label, p2_label_size)
+						rl.DrawText(p2_label, p2_center_x - p2_label_width / 2, p2_center_y - 30, p2_label_size, p2.col)
 					}
 				} else {
 					// Rectangle paddles
 					rl.DrawRectangleRounded(P1, 0.7, 0, p1.col)
+
+					// Draw P1 label
+					p1_label: cstring = "P1"
+					p1_label_size: i32 = 12
+					p1_label_width := rl.MeasureText(p1_label, p1_label_size)
+					rl.DrawText(p1_label, i32(p1.pos.x + p1.dim.x / 2) - p1_label_width / 2, i32(p1.pos.y) - 20, p1_label_size, p1.col)
+
 					if !mode_config.single_player {
 						rl.DrawRectangleRounded(P2, 0.7, 0, p2.col)
+
+						// Draw P2 label
+						p2_label: cstring = "CPU"
+						p2_label_size: i32 = 12
+						p2_label_width := rl.MeasureText(p2_label, p2_label_size)
+						rl.DrawText(p2_label, i32(p2.pos.x + p2.dim.x / 2) - p2_label_width / 2, i32(p2.pos.y) - 20, p2_label_size, p2.col)
 					}
 				}
 
@@ -476,6 +536,43 @@ main :: proc() {
 					text_size: i32 = 16
 					text_width := rl.MeasureText(cooldown_text, text_size)
 					rl.DrawText(cooldown_text, 10, WIN_DIM.y - 25, text_size, cooldown_color)
+
+					// Catch indicator when holding shift
+					is_catching := rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) || rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
+					if is_catching {
+						// Display catch timer and warning
+						time_left := CATCH_TIME_LIMIT - p1CatchTimer
+						catch_text: cstring
+						catch_color := mode_config.accent_color
+
+						if time_left > 60 {
+							catch_text = rl.TextFormat("Catch: %.1f", f32(time_left) / 60.0)
+						} else if time_left > 0 {
+							catch_text = rl.TextFormat("RELEASE! %.1f", f32(time_left) / 60.0)
+							catch_color = rl.Color{255, 50, 50, 255} // Red warning
+						} else {
+							catch_text = "PENALTY!"
+							catch_color = rl.Color{255, 0, 0, 255}
+						}
+
+						catch_size: i32 = 16
+						catch_width := rl.MeasureText(catch_text, catch_size)
+						rl.DrawText(catch_text, 10, WIN_DIM.y - 45, catch_size, catch_color)
+
+						// Visual glow around P1 paddle when ready to catch
+						paddle_radius := p1.dim.x
+						p1_center_x := i32(p1.pos.x + paddle_radius)
+						p1_center_y := i32(p1.pos.y + p1.dim.y / 2)
+
+						// Color changes based on time remaining
+						glow_color := mode_config.accent_color
+						if time_left < 30 {
+							glow_color = rl.Color{255, 0, 0, 255} // Red when almost expired
+						} else if time_left < 60 {
+							glow_color = rl.Color{255, 150, 0, 255} // Orange as warning
+						}
+						rl.DrawCircle(p1_center_x, p1_center_y, paddle_radius * 1.3, rl.ColorAlpha(glow_color, 0.3))
+					}
 
 					// Flash effect when P1 power hit is used
 					if powerHitFlash > 0 {
@@ -528,6 +625,9 @@ main :: proc() {
 					if cpuPowerHitFlash > 0 {
 						cpuPowerHitFlash -= 1
 					}
+					if cpuCatchHoldTimer > 0 {
+						cpuCatchHoldTimer -= 1
+					}
 
 					// Always allow player/CPU movement (even during countdown)
 					playerControls()
@@ -538,6 +638,51 @@ main :: proc() {
 					}
 
 					setBoundaries()
+
+					// Check for catch time limit penalties (air hockey only)
+					if mode_config.paddle_rounded && !isServing {
+						// Check P1 catch penalty
+						is_p1_catching := rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) || rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
+						if is_p1_catching && p1CatchTimer >= CATCH_TIME_LIMIT {
+							// P1 PENALTY: Held too long! Push puck toward own goal
+							p1_on_left := p1.pos.x < f32(WIN_DIM.x / 2)
+							penalty_dir := p1_on_left ? m.float2{-1.0, 0.0} : m.float2{1.0, 0.0}
+							ball.vel = penalty_dir * 5.0 // Strong push toward own goal
+							p1CatchTimer = 0 // Reset timer
+							rl.PlaySound(strike_fx2) // Wall sound to indicate penalty
+						}
+
+						// Check P2 catch penalty
+						if p2CatchTimer >= CATCH_TIME_LIMIT {
+							// P2 PENALTY: Held too long! Push puck toward own goal
+							p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
+							penalty_dir := p2_on_left ? m.float2{-1.0, 0.0} : m.float2{1.0, 0.0}
+							ball.vel = penalty_dir * 5.0 // Strong push toward own goal
+							p2CatchTimer = 0 // Reset timer
+							cpuCatchHoldTimer = 0 // Reset hold timer
+							rl.PlaySound(strike_fx2) // Wall sound to indicate penalty
+						}
+
+						// CPU release shot when hold timer expires
+						if cpuCatchHoldTimer > 0 && cpuCatchHoldTimer <= 10 {
+							// Time for CPU to shoot! Check if puck is near CPU
+							paddle_radius := p2.dim.x
+							p2_center := m.float2{p2.pos.x + paddle_radius, p2.pos.y + p2.dim.y / 2}
+							dist_to_ball := m.distance(ball.pos, p2_center)
+
+							if dist_to_ball < paddle_radius * 3 { // Within reasonable range
+								// Release and shoot toward opponent's goal
+								p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
+								goal_target_x: f32 = p2_on_left ? f32(WIN_DIM.x) : 0
+								goal_target_y := f32(WIN_DIM.y / 2) + rnd.float32_range(-50, 50)
+								aim_direction := m.normalize(m.float2{goal_target_x - ball.pos.x, goal_target_y - ball.pos.y})
+								ball.vel = aim_direction * 4.5 // Medium speed shot
+								cpuCatchHoldTimer = 0
+								p2CatchTimer = 0
+								rl.PlaySound(strike_fx1)
+							}
+						}
+					}
 
 					// Only move ball when not in countdown
 					if !isServing {
@@ -550,7 +695,6 @@ main :: proc() {
 					p2.hit = false
 
 					// Air hockey power hit mechanic (Player)
-					// BUG: powerhit direction wrong after side switch
 					if mode_config.paddle_rounded && !isServing {
 						if rl.IsKeyPressed(rl.KeyboardKey.ENTER) && powerHitCooldown == 0 {
 							// Check if ball is close enough to P1 for power hit
@@ -563,18 +707,9 @@ main :: proc() {
 							hit_range: f32 = 60.0 // Can hit from slightly farther away
 
 							if dist_to_ball < hit_range {
-								// Power hit! Launch ball toward opponent at high speed
-								// Direction: mostly horizontal (toward opponent) with slight Y angle
-								y_offset := (ball.pos.y - p1_center.y) / paddle_radius // Normalized -1 to 1
-								p1_on_left := p1.pos.x < f32(WIN_DIM.x / 2)
-								x_dir: f32
-								if p1_on_left {
-									x_dir = 0.95
-								} else {
-									x_dir = -0.95
-								}
-								direction := m.float2{x_dir, y_offset * 0.15} // Launch toward opponent
-								direction = m.normalize(direction)
+								// Power hit! Launch ball in direction from paddle to ball
+								// This allows hitting in any direction based on paddle position
+								direction := m.normalize(ball.pos - p1_center)
 								ball.vel = direction * 6.0 // High speed launch
 								powerHitCooldown = 120 // 2 second cooldown
 								powerHitFlash = 15 // Flash effect
@@ -595,12 +730,19 @@ main :: proc() {
 
 							// CPU uses power hit when ball is slow and close
 							ball_speed := m.length(ball.vel)
-							if dist_to_ball < hit_range && ball_speed < 2.0 {
-								// CPU power hit!
-								y_offset := (ball.pos.y - p2_center.y) / paddle_radius
-								direction := m.float2{-0.95, y_offset * 0.15} // Toward left (opponent)
-								direction = m.normalize(direction)
-								ball.vel = direction * 6.0
+							p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
+
+							// Check if CPU is in good position (not at risk of own goal)
+							is_safe_to_power_hit := (p2_on_left && p2_center.x > ball.pos.x - 20) ||
+							                        (!p2_on_left && p2_center.x < ball.pos.x + 20)
+
+							if dist_to_ball < hit_range && ball_speed < 2.0 && is_safe_to_power_hit {
+								// CPU power hit! Aim toward opponent's goal
+								// Aim for opponent's goal center
+								goal_target_x: f32 = p2_on_left ? f32(WIN_DIM.x) : 0
+								goal_target_y := f32(WIN_DIM.y / 2)
+								aim_direction := m.normalize(m.float2{goal_target_x - p2_center.x, goal_target_y - p2_center.y})
+								ball.vel = aim_direction * 6.0
 								cpuPowerHitCooldown = 120
 								cpuPowerHitFlash = 15
 								rl.PlaySound(strike_fx3)
@@ -635,8 +777,44 @@ main :: proc() {
 								p1_center +
 								collision_normal * (collision_radius + paddle_radius + 1.0)
 
-							handlePaddleCollision(&p1, strike_fx1, strike_fx3)
-							rallyCount += 1
+							// Check if player is holding SHIFT for paddle catching
+							is_catching := rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) || rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
+							did_catch := false
+
+							if is_catching {
+								// Paddle catching: dramatically reduce puck speed (trap it)
+								ball_speed := m.length(ball.vel)
+								if ball_speed < 4.0 {
+									// Can only catch slow to medium speed pucks
+									ball.vel *= 0.15 // Reduce to 15% of original speed (near stop)
+									did_catch = true
+									p1CatchTimer += 1 // Increment catch timer
+									// No sound when catching
+								} else {
+									// Too fast to catch - normal deflection but softer
+									base_speed := ball_speed * 0.7 // Softer deflection
+									min_speed: f32 = 2.0
+									hit_speed := m.max(base_speed, min_speed)
+									ball.vel = collision_normal * hit_speed + p1.vel * 0.3
+									p1CatchTimer = 0 // Not actually catching
+									rl.PlaySound(strike_fx1)
+								}
+							} else {
+								// Normal air hockey physics: ball goes in direction of collision normal
+								// Add paddle momentum for more realistic feel
+								base_speed := m.length(ball.vel) * mode_config.paddle_dampening
+								min_speed: f32 = 2.0
+								hit_speed := m.max(base_speed, min_speed)
+								ball.vel = collision_normal * hit_speed + p1.vel * 0.3
+								p1CatchTimer = 0 // Reset catch timer
+								rl.PlaySound(strike_fx1)
+							}
+
+							p1.hit = true
+							// Only count as rally if not catching
+							if !did_catch {
+								rallyCount += 1
+							}
 						}
 
 						// Check P2 collision
@@ -648,8 +826,65 @@ main :: proc() {
 								p2_center +
 								collision_normal * (collision_radius + paddle_radius + 1.0)
 
-							handlePaddleCollision(&p2, strike_fx1, strike_fx3)
-							rallyCount += 1
+							// CPU decides whether to catch based on situation
+							ball_speed := m.length(ball.vel)
+							cpu_wants_catch := false
+							cpu_did_catch := false
+
+							// CPU catch and release logic
+							// If CPU is already holding a caught puck, keep catching it
+							// But release and shoot when timer gets low
+							if cpuCatchHoldTimer > 10 && ball_speed < 2.0 {
+								cpu_wants_catch = true
+							} else if cpuCatchHoldTimer > 0 && cpuCatchHoldTimer <= 10 {
+								// Time to release and shoot!
+								p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
+								// Aim toward opponent's goal
+								goal_target_x: f32 = p2_on_left ? f32(WIN_DIM.x) : 0
+								goal_target_y := f32(WIN_DIM.y / 2) + rnd.float32_range(-50, 50) // Add variation
+								aim_direction := m.normalize(m.float2{goal_target_x - p2_center.x, goal_target_y - p2_center.y})
+								ball.vel = aim_direction * 4.5 // Medium speed shot
+								cpuCatchHoldTimer = 0 // Reset hold timer
+								p2CatchTimer = 0 // Reset catch timer
+								rl.PlaySound(strike_fx1)
+							} else if cpuCatchHoldTimer == 0 {
+								// CPU decides to initiate a new catch:
+								// 1. Ball is slow/medium speed (< 4.5)
+								// 2. Not in extreme defensive emergency
+								// 3. Random chance (50% probability)
+								if ball_speed < 4.5 {
+									p2_on_left := p2.pos.x < f32(WIN_DIM.x / 2)
+									cpu_goal_x: f32 = p2_on_left ? 0 : f32(WIN_DIM.x)
+									ball_close_to_cpu_goal := m.abs(ball.pos.x - cpu_goal_x) < 100
+
+									if !ball_close_to_cpu_goal && rnd.float32() < 0.5 {
+										cpu_wants_catch = true
+										cpuCatchHoldTimer = 60 // Hold for ~1 second
+									}
+								}
+							}
+
+							if cpu_wants_catch {
+								// CPU catches the puck
+								ball.vel *= 0.15
+								cpu_did_catch = true
+								p2CatchTimer += 1 // Increment catch timer
+								// No sound when catching
+							} else if cpuCatchHoldTimer == 0 {
+								// Normal air hockey physics (only if not in release mode)
+								base_speed := ball_speed * mode_config.paddle_dampening
+								min_speed: f32 = 2.0
+								hit_speed := m.max(base_speed, min_speed)
+								ball.vel = collision_normal * hit_speed + p2.vel * 0.3
+								p2CatchTimer = 0 // Reset catch timer
+								rl.PlaySound(strike_fx1)
+							}
+
+							p2.hit = true
+							// Only count as rally if not catching
+							if !cpu_did_catch {
+								rallyCount += 1
+							}
 						}
 					} else if rl.CheckCollisionCircleRec(
 						{ball.pos.x, ball.pos.y},
@@ -726,7 +961,6 @@ main :: proc() {
 					}
 
 					// Score logic
-					// BUG: broken after side switch
 					if mode_config.single_player {
 						// Squash: lose point when ball stops moving
 						ball_speed := m.length(ball.vel)
@@ -752,7 +986,7 @@ main :: proc() {
 								rallyCount = 0
 								isServing = true
 								countdownTimer = 180
-								scoreFlashTimer = 30
+								scoreFlashTimer = 120
 							}
 						} else {
 							scoreCounter = 0 // Reset if ball is still moving
@@ -801,7 +1035,7 @@ main :: proc() {
 									rallyCount = 0
 									isServing = true
 									countdownTimer = 180
-									scoreFlashTimer = 30
+									scoreFlashTimer = 120
 								} else {
 									// Ball hit wall outside goal - bounce
 									ball.pos.x = goal_depth + collision_radius
@@ -854,7 +1088,7 @@ main :: proc() {
 									rallyCount = 0
 									isServing = true
 									countdownTimer = 180
-									scoreFlashTimer = 30
+									scoreFlashTimer = 120
 								} else {
 									// Ball hit wall outside goal - bounce
 									ball.pos.x = f32(WIN_DIM.x) - goal_depth - collision_radius
@@ -904,7 +1138,7 @@ main :: proc() {
 									rallyCount = 0
 									isServing = true
 									countdownTimer = 180
-									scoreFlashTimer = 30
+									scoreFlashTimer = 120
 								}
 							} else if ball.pos.x > f32(WIN_DIM.x) {
 								scoreCounter += 1
@@ -934,7 +1168,7 @@ main :: proc() {
 									rallyCount = 0
 									isServing = true
 									countdownTimer = 180
-									scoreFlashTimer = 30
+									scoreFlashTimer = 120
 								}
 							}
 						}
@@ -1010,6 +1244,9 @@ main :: proc() {
 		}
 
 		rl.EndDrawing()
+
+		// Update previous screen for next frame
+		previousScreen = currentScreen
 	}
 
 	rl.UnloadSound(score_fx1)
@@ -1488,6 +1725,11 @@ drawNet :: proc() {
 }
 
 drawScores :: proc(flashTimer: i32) {
+	// Only show scores when someone just scored (during flash timer)
+	if flashTimer <= 0 {
+		return
+	}
+
 	score_size: i32 = 60
 	score_y: i32 = 30
 
@@ -1501,32 +1743,36 @@ drawScores :: proc(flashTimer: i32) {
 	p2_width := rl.MeasureText(p2_text, score_size)
 	p2_x := (WIN_DIM.x * 3 / 4) - p2_width / 2
 
-	// Flash effect when score changes
-	score_color := theme.txt_dark
-	if flashTimer > 0 {
-		// Pulse using mode's accent color
-		alpha := f32(flashTimer) / 30.0
-		score_color = rl.ColorAlpha(mode_config.accent_color, alpha)
+	// Fade in quickly, hold, then fade out
+	// Total duration: 120 frames (2 seconds at 60fps)
+	alpha: f32
+	scale_mult: f32 = 1.0
+
+	if flashTimer > 100 {
+		// Fade in: frames 120->100 (20 frames)
+		fade_in := 1.0 - (f32(flashTimer - 100) / 20.0)
+		alpha = fade_in
+		scale_mult = 1.0 + (1.0 - fade_in) * 0.15 // Quick pop effect
+	} else if flashTimer > 30 {
+		// Hold at full opacity: frames 100->30 (70 frames, ~1.2 seconds)
+		alpha = 1.0
+		scale_mult = 1.0
+	} else {
+		// Fade out: frames 30->0 (30 frames)
+		alpha = f32(flashTimer) / 30.0
+		scale_mult = 1.0
 	}
 
-	rl.DrawText(p1_text, p1_x, score_y, score_size, p1.col)
-	rl.DrawText(p2_text, p2_x, score_y, score_size, p2.col)
+	p1_color := rl.ColorAlpha(p1.col, alpha)
+	p2_color := rl.ColorAlpha(p2.col, alpha)
 
-	// Score separator
-	rl.DrawText(
-		"-",
-		WIN_DIM.x / 2 - rl.MeasureText("-", 40) / 2,
-		score_y + 10,
-		40,
-		theme.txt_light,
-	)
+	// Draw with scale effect
+	scaled_size := i32(f32(score_size) * scale_mult)
+	offset_x := (scaled_size - score_size) / 2
+	offset_y := (scaled_size - score_size) / 2
 
-	// Games won (match score) - display below point scores
-	games_size: i32 = 20
-	games_y: i32 = 100
-	games_text := rl.TextFormat("Games: %i - %i", p1.games_won, p2.games_won)
-	games_width := rl.MeasureText(games_text, games_size)
-	rl.DrawText(games_text, WIN_DIM.x / 2 - games_width / 2, games_y, games_size, theme.txt_light)
+	rl.DrawText(p1_text, p1_x - offset_x, score_y - offset_y, scaled_size, p1_color)
+	rl.DrawText(p2_text, p2_x - offset_x, score_y - offset_y, scaled_size, p2_color)
 }
 
 playerControls :: proc() {
@@ -1577,43 +1823,78 @@ cpuAI :: proc() {
 	// Air hockey: CPU can move forward/backward and up/down
 	if mode_config.allow_x_movement && mode_config.paddle_rounded {
 		target_vel := m.float2{0, 0}
+		paddle_center := m.float2{p2.pos.x + p2.dim.x, p2.pos.y + p2.dim.y / 2}
 
-		// Y-axis movement - track ball
+		// Determine CPU's goal position
+		cpu_goal_x: f32 = p2_on_left ? 0 : f32(WIN_DIM.x)
+
+		// Check if CPU is in danger of scoring own goal
+		// If CPU is between ball and its own goal, it needs to reposition defensively
+		ball_to_goal_x := cpu_goal_x - ball.pos.x
+		cpu_to_goal_x := cpu_goal_x - paddle_center.x
+		is_between_ball_and_goal := (p2_on_left && paddle_center.x < ball.pos.x) ||
+		                            (!p2_on_left && paddle_center.x > ball.pos.x)
+
+		ball_close_to_goal := m.abs(ball.pos.x - cpu_goal_x) < 200 // Ball is dangerously close
+
+		// Y-axis movement - always track ball vertically
 		if (p2.pos.y + p2.dim.y / 2) > ball.pos.y + 10 {
 			target_vel.y = -p2.spd
 		} else if (p2.pos.y + p2.dim.y / 2) < ball.pos.y - 10 {
 			target_vel.y = p2.spd
 		}
 
-		// X-axis movement - move forward to intercept ball (logic depends on which side CPU is on)
-		paddle_center_x := p2.pos.x + p2.dim.x
+		// X-axis movement - defensive positioning when at risk of own goal
+		if is_between_ball_and_goal && ball_close_to_goal {
+			// DEFENSIVE EMERGENCY: Move FAST to get behind ball and defend goal
+			safe_offset: f32 = 30.0 // Stay this far behind ball
 
-		if p2_on_left {
-			// CPU is on LEFT side
-			if ball.vel.x < 0 {
-				// Ball coming toward CPU (moving left) - move forward to intercept
-				if paddle_center_x < ball.pos.x - 40 {
-					target_vel.x = p2.spd * 0.7 // Move forward (right)
+			if p2_on_left {
+				// CPU on left - get to right side of ball (behind it from goal perspective)
+				target_x := ball.pos.x + safe_offset
+				if paddle_center.x < target_x - 20 {
+					target_vel.x = p2.spd * 1.5 // FAST: Move right (away from own goal)
+				} else if paddle_center.x > target_x + 20 {
+					target_vel.x = -p2.spd * 1.2 // Fast adjust position
 				}
 			} else {
-				// Ball moving away (moving right) - retreat toward back of zone
-				retreat_pos: f32 = 80.0
-				if paddle_center_x > retreat_pos {
-					target_vel.x = -p2.spd * 0.5 // Move back (left)
+				// CPU on right - get to left side of ball (behind it from goal perspective)
+				target_x := ball.pos.x - safe_offset
+				if paddle_center.x > target_x + 20 {
+					target_vel.x = -p2.spd * 1.5 // FAST: Move left (away from own goal)
+				} else if paddle_center.x < target_x - 20 {
+					target_vel.x = p2.spd * 1.2 // Fast adjust position
 				}
 			}
 		} else {
-			// CPU is on RIGHT side
-			if ball.vel.x > 0 {
-				// Ball coming toward CPU (moving right) - move forward to intercept
-				if paddle_center_x > ball.pos.x + 40 {
-					target_vel.x = -p2.spd * 0.7 // Move forward (left)
+			// OFFENSIVE: Normal aggressive play
+			if p2_on_left {
+				// CPU is on LEFT side
+				if ball.vel.x < 0 {
+					// Ball coming toward CPU - move forward to intercept
+					if paddle_center.x < ball.pos.x - 40 {
+						target_vel.x = p2.spd * 0.7
+					}
+				} else {
+					// Ball moving away - retreat to defensive position
+					retreat_pos: f32 = 80.0
+					if paddle_center.x > retreat_pos {
+						target_vel.x = -p2.spd * 0.5
+					}
 				}
 			} else {
-				// Ball moving away (moving left) - retreat toward back of zone
-				retreat_pos := f32(WIN_DIM.x) - 80.0
-				if paddle_center_x < retreat_pos {
-					target_vel.x = p2.spd * 0.5 // Move back (right)
+				// CPU is on RIGHT side
+				if ball.vel.x > 0 {
+					// Ball coming toward CPU - move forward to intercept
+					if paddle_center.x > ball.pos.x + 40 {
+						target_vel.x = -p2.spd * 0.7
+					}
+				} else {
+					// Ball moving away - retreat to defensive position
+					retreat_pos := f32(WIN_DIM.x) - 80.0
+					if paddle_center.x < retreat_pos {
+						target_vel.x = p2.spd * 0.5
+					}
 				}
 			}
 		}
@@ -1843,21 +2124,22 @@ handlePaddleCollision :: proc(paddle: ^Paddle, strike_normal: rl.Sound, strike_s
 }
 
 swapSides :: proc() {
-	// Fully swap paddle data so player and CPU switch physical sides
-	// This way the player (P1) moves to the right and controls from there
-	// and CPU (P2) moves to the left
+	// Swap paddle positions so player and CPU switch physical sides
+	// This actually swaps their X coordinates
 
-	// Swap positions (to opposite starting positions)
-	p1.pos = m.float2{f32(P2_START_POS), f32(WIN_DIM.y / 2)}
-	p2.pos = m.float2{f32(P1_START_POS), f32(WIN_DIM.y / 2)}
+	// Swap X positions
+	p1.pos.x, p2.pos.x = p2.pos.x, p1.pos.x
 
-	// Reset velocities (don't swap, just reset)
+	// Reset Y positions to center
+	p1.pos.y = f32(WIN_DIM.y / 2)
+	p2.pos.y = f32(WIN_DIM.y / 2)
+
+	// Reset velocities
 	p1.vel = m.float2{0, 0}
 	p2.vel = m.float2{0, 0}
 
-	// Swap games won (this tracks the actual player/CPU, not the paddle object)
-	p1.games_won, p2.games_won = p2.games_won, p1.games_won
-
+	// Don't swap games_won - p1 and p2 always represent the same player/CPU
+	// Only positions swap, not identity
 	// Scores are already reset to 0-0 before calling this
 	// Colors stay the same (P1 is always red, P2 is always blue)
 	// Speed and dimensions stay the same
@@ -1900,8 +2182,8 @@ drawRallyCounter :: proc(rallyCount: i32) {
 	text_size: i32 = 20
 	text_width := rl.MeasureText(text, text_size)
 
-	// Position in bottom center
-	rl.DrawText(text, WIN_DIM.x / 2 - text_width / 2, WIN_DIM.y - 30, text_size, theme.txt_light)
+	// Position in bottom center, above the games won bars
+	rl.DrawText(text, WIN_DIM.x / 2 - text_width / 2, WIN_DIM.y - 75, text_size, theme.txt_light)
 
 	// Add excitement for long rallies (mode-specific threshold)
 	threshold := mode_config.rally_threshold
@@ -1924,5 +2206,55 @@ drawRallyCounter :: proc(rallyCount: i32) {
 			25,
 			excitement_color,
 		)
+	}
+}
+
+drawGamesWonBars :: proc() {
+	// Draw visual indicators for games won as vertical bars at bottom of screen
+	// Red bars for P1 on left, blue bars for P2 on right
+	// Best of 3, so max 2 bars per player
+
+	bar_width: i32 = 12
+	bar_height: i32 = 40
+	bar_spacing: i32 = 6
+	gap_between_players: i32 = 30
+	y_pos := WIN_DIM.y - bar_height - 15
+
+	max_games: i32 = 2 // Best of 3 means first to 2 wins
+
+	// Always draw placeholder outlines for all possible bars
+	slot_width := bar_width + bar_spacing
+	p1_section_width := max_games * slot_width
+	p2_section_width := max_games * slot_width
+	total_width := p1_section_width + gap_between_players + p2_section_width
+
+	// Center the entire bar display
+	start_x := WIN_DIM.x / 2 - total_width / 2
+
+	// Draw P1 section (left side, red)
+	for i: i32 = 0; i < max_games; i += 1 {
+		x := start_x + i * slot_width
+		if i < p1.games_won {
+			// Filled bar (game won)
+			rl.DrawRectangle(x, y_pos, bar_width, bar_height, theme.p1)
+			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorBrightness(theme.p1, -0.4))
+		} else {
+			// Empty outline (game not yet won)
+			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorAlpha(theme.p1, 0.3))
+		}
+	}
+
+	// Draw P2 section (right side, blue)
+	p2_start_x := start_x + p1_section_width + gap_between_players
+	for i: i32 = 0; i < max_games; i += 1 {
+		x := p2_start_x + i * slot_width
+		if i < p2.games_won {
+			// Filled bar (game won)
+			rl.DrawRectangle(x, y_pos, bar_width, bar_height, theme.p2)
+			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorBrightness(theme.p2, -0.4))
+		} else {
+			// Empty outline (game not yet won)
+			rl.DrawRectangleLines(x, y_pos, bar_width, bar_height, rl.ColorAlpha(theme.p2, 0.3))
+		}
 	}
 }
