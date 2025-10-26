@@ -3,6 +3,9 @@ package main
 import m "core:math/linalg/hlsl"
 import rnd "core:math/rand"
 import rl "vendor:raylib"
+import "core:encoding/json"
+import "core:os"
+import "core:fmt"
 
 Window :: struct {
 	name:   cstring,
@@ -43,6 +46,20 @@ Theme :: struct {
 }
 
 theme: Theme
+
+SaveData :: struct {
+	hockey_games_won:  i32, // Total hockey games won (for unlocking tennis)
+	total_power_shots: i32, // Total power shots used (for unlocking pong)
+	matches_won:       i32, // Total matches won across all modes
+	tennis_unlocked:   bool,
+	pong_unlocked:     bool,
+}
+
+save_data: SaveData
+SAVE_FILE_PATH :: "save_data.json"
+
+// Debug flags
+debug_unlock_all := false
 
 State :: enum {
 	LOGO,
@@ -110,13 +127,25 @@ mode_config: ModeConfig
 
 main :: proc() {
 
+	// Parse command line arguments for debug flags
+	args := os.args
+	for arg in args {
+		if arg == "--unlock-all" {
+			debug_unlock_all = true
+			fmt.println("Debug: All modes unlocked")
+		}
+	}
+
 	// INIT
 	window := Window{"Pong", WIN_DIM.x, WIN_DIM.y, 60}
 
-	// Initialize default mode
-	current_mode = .PONG
+	// Load save data
+	save_data = loadSaveData()
+
+	// Initialize default mode (Air Hockey)
+	current_mode = .AIR_HOCKEY
 	mode_config = getModeConfig(current_mode)
-	selected_mode: GameMode = .PONG
+	selected_mode: GameMode = .AIR_HOCKEY
 
 	{
 		using window
@@ -141,6 +170,7 @@ main :: proc() {
 	p1CatchTimer: i32 = 0 // How long P1 has been catching (counts up)
 	p2CatchTimer: i32 = 0 // How long P2 has been catching (counts up)
 	CATCH_TIME_LIMIT: i32 : 120 // Max frames to hold puck (2 seconds at 60fps)
+	lockedMessageTimer: i32 = 0 // Timer for showing "LOCKED" message when trying to select locked mode
 
 	// Colors - will be updated per mode
 	theme.bg_main = mode_config.bg_color
@@ -230,51 +260,62 @@ main :: proc() {
 				// Update music stream every frame for smooth playback
 				rl.UpdateMusicStream(back_fx2)
 
-				// Navigate modes with arrow keys
+				// Decrement locked message timer
+				if lockedMessageTimer > 0 {
+					lockedMessageTimer -= 1
+				}
+
+				// Navigate modes with arrow keys (allow selecting locked modes)
 				if rl.IsKeyPressed(rl.KeyboardKey.LEFT) {
 					selected_mode = GameMode((int(selected_mode) - 1 + 4) % 4)
 				} else if rl.IsKeyPressed(rl.KeyboardKey.RIGHT) {
 					selected_mode = GameMode((int(selected_mode) + 1) % 4)
 				}
 
-				// Select mode with ENTER
+				// Select mode with ENTER (only if unlocked)
 				if rl.IsKeyPressed(rl.KeyboardKey.ENTER) {
-					current_mode = selected_mode
-					mode_config = getModeConfig(current_mode)
+					if !isModeUnlocked(selected_mode) {
+						// Mode is locked - show message
+						lockedMessageTimer = 120 // Show for 2 seconds
+					} else {
+						// Mode is unlocked - proceed to game
+						current_mode = selected_mode
+						mode_config = getModeConfig(current_mode)
 
-					// Update theme colors for selected mode
-					theme.bg_main = mode_config.bg_color
-					theme.txt_dark = mode_config.text_color
-					theme.txt_light = mode_config.court_secondary
-					// Players are red (P1) and blue (P2)
-					theme.p1 = rl.Color{255, 50, 50, 255} // Red
-					theme.p2 = rl.Color{50, 100, 255, 255} // Blue
-					theme.ball = mode_config.ball_color
-					p1.col = theme.p1
-					p2.col = theme.p2
-					ball.col = mode_config.ball_color
+						// Update theme colors for selected mode
+						theme.bg_main = mode_config.bg_color
+						theme.txt_dark = mode_config.text_color
+						theme.txt_light = mode_config.court_secondary
+						// Players are red (P1) and blue (P2)
+						theme.p1 = rl.Color{255, 50, 50, 255} // Red
+						theme.p2 = rl.Color{50, 100, 255, 255} // Blue
+						theme.ball = mode_config.ball_color
+						p1.col = theme.p1
+						p2.col = theme.p2
+						ball.col = mode_config.ball_color
 
-					// Reset positions for new match
-					p1.pos = m.float2{f32(P1_START_POS), f32(WIN_DIM.y / 2)}
-					p2.pos = m.float2{f32(P2_START_POS), f32(WIN_DIM.y / 2)}
-					p1.vel = m.float2{0, 0}
-					p2.vel = m.float2{0, 0}
-					p1.scr = MIN_SCORE
-					p2.scr = MIN_SCORE
-					p1.games_won = 0
-					p2.games_won = 0
+						// Reset positions for new match
+						p1.pos = m.float2{f32(P1_START_POS), f32(WIN_DIM.y / 2)}
+						p2.pos = m.float2{f32(P2_START_POS), f32(WIN_DIM.y / 2)}
+						p1.vel = m.float2{0, 0}
+						p2.vel = m.float2{0, 0}
+						p1.scr = MIN_SCORE
+						p2.scr = MIN_SCORE
+						p1.games_won = 0
+						p2.games_won = 0
 
-					currentScreen = State.GAME
-					isServing = true
-					countdownTimer = 180
-					rallyCount = 0
-					powerHitCooldown = 0
-					powerHitFlash = 0
-					cpuPowerHitCooldown = 0
-					cpuPowerHitFlash = 0
-					cpuCatchHoldTimer = 0
-					p1CatchTimer = 0
-					p2CatchTimer = 0
+						currentScreen = State.GAME
+						isServing = true
+						countdownTimer = 180
+						rallyCount = 0
+						powerHitCooldown = 0
+						powerHitFlash = 0
+						cpuPowerHitCooldown = 0
+						cpuPowerHitFlash = 0
+						cpuCatchHoldTimer = 0
+						p1CatchTimer = 0
+						p2CatchTimer = 0
+					}
 				}
 
 				// No back button - ESC to quit
@@ -331,11 +372,24 @@ main :: proc() {
 					p2CatchTimer = 0
 				}
 
-				// Check for game win (reaching win_score)
-				if p1.scr == mode_config.win_score {
+				// Check for game win (reaching win_score) - disabled for squash
+				if current_mode != .SQUASH && p1.scr == mode_config.win_score {
+					fmt.println("P1 won a game! Mode:", current_mode, "Games won:", p1.games_won + 1)
 					p1.games_won += 1
+
+					// Track hockey games won for unlock progress
+					if current_mode == .AIR_HOCKEY {
+						fmt.println("Tracking hockey game win - Total now:", save_data.hockey_games_won + 1)
+						save_data.hockey_games_won += 1
+						saveSaveData() // Save immediately
+						updateUnlocks()
+					}
+
 					if p1.games_won >= 2 {
 						// Match won!
+						fmt.println("P1 won the match! Total matches won:", save_data.matches_won + 1)
+						save_data.matches_won += 1
+						saveSaveData()
 						currentScreen = State.END
 						showQuitDialog = false
 					} else {
@@ -356,8 +410,9 @@ main :: proc() {
 						cpuPowerHitCooldown = 0
 						cpuPowerHitFlash = 0
 					}
-				} else if p2.scr == mode_config.win_score {
+				} else if current_mode != .SQUASH && p2.scr == mode_config.win_score {
 					p2.games_won += 1
+
 					if p2.games_won >= 2 {
 						// Match won!
 						currentScreen = State.END
@@ -439,7 +494,7 @@ main :: proc() {
 			}; break
 		case .MODE_SELECT:
 			{
-				drawModeSelect(selected_mode)
+				drawModeSelect(selected_mode, lockedMessageTimer)
 
 			}; break
 		case .GAME:
@@ -450,7 +505,10 @@ main :: proc() {
 
 				drawScores(scoreFlashTimer)
 
-				drawGamesWonBars()
+				// Only show games won bars in competitive modes (not squash)
+				if current_mode != .SQUASH {
+					drawGamesWonBars()
+				}
 
 				// Draw Paddles (mode-specific shape)
 				P1: rl.Rectangle = {f32(p1.pos.x), f32(p1.pos.y), p1.dim.x, p1.dim.y}
@@ -546,8 +604,8 @@ main :: proc() {
 				// Draw rally counter
 				drawRallyCounter(rallyCount)
 
-				// Draw power hit cooldown indicator (air hockey only)
-				if mode_config.paddle_rounded {
+				// Draw power hit cooldown indicator (all modes except PONG)
+				if current_mode != .PONG {
 					cooldown_text: cstring
 					cooldown_color := theme.txt_light
 					if powerHitCooldown > 0 {
@@ -561,11 +619,12 @@ main :: proc() {
 					text_width := rl.MeasureText(cooldown_text, text_size)
 					rl.DrawText(cooldown_text, 10, WIN_DIM.y - 25, text_size, cooldown_color)
 
-					// Catch indicator when holding shift
-					is_catching :=
-						rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) ||
-						rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
-					if is_catching {
+					// Catch indicator when holding shift (air hockey only)
+					if current_mode == .AIR_HOCKEY {
+						is_catching :=
+							rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) ||
+							rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)
+						if is_catching {
 						// Display catch timer and warning
 						time_left := CATCH_TIME_LIMIT - p1CatchTimer
 						catch_text: cstring
@@ -603,28 +662,53 @@ main :: proc() {
 							paddle_radius * 1.3,
 							rl.ColorAlpha(glow_color, 0.3),
 						)
+						}
 					}
 
 					// Flash effect when P1 power hit is used
 					if powerHitFlash > 0 {
 						flash_alpha := f32(powerHitFlash) / 15.0
-						rl.DrawCircle(
-							i32(p1.pos.x + p1.dim.x),
-							i32(p1.pos.y + p1.dim.y / 2),
-							p1.dim.x * 2.0,
-							rl.ColorAlpha(mode_config.accent_color, flash_alpha * 0.5),
-						)
+						if mode_config.paddle_rounded {
+							// Circular flash for air hockey
+							rl.DrawCircle(
+								i32(p1.pos.x + p1.dim.x),
+								i32(p1.pos.y + p1.dim.y / 2),
+								p1.dim.x * 2.0,
+								rl.ColorAlpha(mode_config.accent_color, flash_alpha * 0.5),
+							)
+						} else {
+							// Rectangular flash for other modes
+							rl.DrawRectangle(
+								i32(p1.pos.x - 10),
+								i32(p1.pos.y - 10),
+								i32(p1.dim.x + 20),
+								i32(p1.dim.y + 20),
+								rl.ColorAlpha(mode_config.accent_color, flash_alpha * 0.5),
+							)
+						}
 					}
 
 					// Flash effect when CPU power hit is used
 					if cpuPowerHitFlash > 0 {
 						flash_alpha := f32(cpuPowerHitFlash) / 15.0
-						rl.DrawCircle(
-							i32(p2.pos.x + p2.dim.x),
-							i32(p2.pos.y + p2.dim.y / 2),
-							p2.dim.x * 2.0,
-							rl.ColorAlpha(mode_config.accent_color, flash_alpha * 0.5),
-						)
+						if mode_config.paddle_rounded {
+							// Circular flash for air hockey
+							rl.DrawCircle(
+								i32(p2.pos.x + p2.dim.x),
+								i32(p2.pos.y + p2.dim.y / 2),
+								p2.dim.x * 2.0,
+								rl.ColorAlpha(mode_config.accent_color, flash_alpha * 0.5),
+							)
+						} else {
+							// Rectangular flash for other modes
+							rl.DrawRectangle(
+								i32(p2.pos.x - 10),
+								i32(p2.pos.y - 10),
+								i32(p2.dim.x + 20),
+								i32(p2.dim.y + 20),
+								rl.ColorAlpha(mode_config.accent_color, flash_alpha * 0.5),
+							)
+						}
 					}
 				}
 
@@ -735,39 +819,55 @@ main :: proc() {
 					p1.hit = false
 					p2.hit = false
 
-					// Air hockey power hit mechanic (Player)
-					if mode_config.paddle_rounded && !isServing {
+					// Power hit mechanic (all modes except PONG)
+					if current_mode != .PONG && !isServing {
 						if rl.IsKeyPressed(rl.KeyboardKey.ENTER) && powerHitCooldown == 0 {
-							// Check if ball is close enough to P1 for power hit
-							paddle_radius := p1.dim.x
-							p1_center := m.float2 {
-								p1.pos.x + paddle_radius,
-								p1.pos.y + p1.dim.y / 2,
+							// Calculate paddle center based on paddle shape
+							p1_center: m.float2
+							if mode_config.paddle_rounded {
+								// Circular paddle (air hockey)
+								paddle_radius := p1.dim.x
+								p1_center = m.float2{p1.pos.x + paddle_radius, p1.pos.y + p1.dim.y / 2}
+							} else {
+								// Rectangular paddle (tennis, squash)
+								p1_center = m.float2{p1.pos.x + p1.dim.x / 2, p1.pos.y + p1.dim.y / 2}
 							}
+
 							dist_to_ball := m.distance(ball.pos, p1_center)
-							hit_range: f32 = 60.0 // Can hit from slightly farther away
+							hit_range: f32 = 80.0 // Can hit from slightly farther away
 
 							if dist_to_ball < hit_range {
 								// Power hit! Launch ball in direction from paddle to ball
-								// This allows hitting in any direction based on paddle position
 								direction := m.normalize(ball.pos - p1_center)
 								ball.vel = direction * 6.0 // High speed launch
 								powerHitCooldown = 120 // 2 second cooldown
 								powerHitFlash = 15 // Flash effect
 								rl.PlaySound(strike_fx3) // Play power hit sound
 								p1.hit = true
+								rallyCount += 1 // Count power hit in rally
+
+								// Track power shot usage
+								save_data.total_power_shots += 1
+								saveSaveData() // Save immediately
+								updateUnlocks()
 							}
 						}
 
 						// CPU power hit AI
 						if !mode_config.single_player && cpuPowerHitCooldown == 0 {
-							paddle_radius := p2.dim.x
-							p2_center := m.float2 {
-								p2.pos.x + paddle_radius,
-								p2.pos.y + p2.dim.y / 2,
+							// Calculate paddle center based on paddle shape
+							p2_center: m.float2
+							if mode_config.paddle_rounded {
+								// Circular paddle (air hockey)
+								paddle_radius := p2.dim.x
+								p2_center = m.float2{p2.pos.x + paddle_radius, p2.pos.y + p2.dim.y / 2}
+							} else {
+								// Rectangular paddle (tennis, squash)
+								p2_center = m.float2{p2.pos.x + p2.dim.x / 2, p2.pos.y + p2.dim.y / 2}
 							}
+
 							dist_to_ball := m.distance(ball.pos, p2_center)
-							hit_range: f32 = 60.0
+							hit_range: f32 = 80.0
 
 							// CPU uses power hit when ball is slow and close
 							ball_speed := m.length(ball.vel)
@@ -782,7 +882,6 @@ main :: proc() {
 							   ball_speed < 2.0 &&
 							   is_safe_to_power_hit {
 								// CPU power hit! Aim toward opponent's goal
-								// Aim for opponent's goal center
 								goal_target_x: f32 = p2_on_left ? f32(WIN_DIM.x) : 0
 								goal_target_y := f32(WIN_DIM.y / 2)
 								aim_direction := m.normalize(
@@ -796,6 +895,7 @@ main :: proc() {
 								cpuPowerHitFlash = 15
 								rl.PlaySound(strike_fx3)
 								p2.hit = true
+								rallyCount += 1 // Count CPU power hit in rally
 							}
 						}
 					}
@@ -998,13 +1098,11 @@ main :: proc() {
 							ball.pos.x = f32(WIN_DIM.x - 10) - collision_radius
 							ball.vel.x = -ball.vel.x * mode_config.wall_dampening
 							rl.PlaySound(strike_fx2)
-							rallyCount += 1
 						} else if ball.pos.x - collision_radius < 10 && ball.vel.x < 0 {
 							// Back wall (left side)
 							ball.pos.x = 10 + collision_radius
 							ball.vel.x = -ball.vel.x * mode_config.wall_dampening
 							rl.PlaySound(strike_fx2)
-							rallyCount += 1
 						}
 					}
 
@@ -1359,6 +1457,98 @@ winner: string = "It's a draw!"
 
 // Procedures
 
+// Save game data to JSON file
+saveSaveData :: proc() {
+	fmt.println("Attempting to save to:", SAVE_FILE_PATH)
+	data, marshal_err := json.marshal(save_data, {pretty = true})
+	if marshal_err != nil {
+		fmt.println("Error marshaling save data:", marshal_err)
+		return
+	}
+	defer delete(data)
+
+	fmt.println("JSON content:", string(data))
+	write_ok := os.write_entire_file(SAVE_FILE_PATH, data)
+	if !write_ok {
+		fmt.println("ERROR: Failed to write save file to", SAVE_FILE_PATH)
+	} else {
+		fmt.println("SUCCESS: Saved game data to", SAVE_FILE_PATH)
+		fmt.println("Data:", save_data)
+	}
+}
+
+// Load game data from JSON file
+loadSaveData :: proc() -> SaveData {
+	data, read_ok := os.read_entire_file(SAVE_FILE_PATH)
+	if !read_ok {
+		// File doesn't exist or can't be read - return default data
+		fmt.println("No save file found, using default data")
+		return SaveData{
+			hockey_games_won = 0,
+			total_power_shots = 0,
+			matches_won = 0,
+			tennis_unlocked = false,
+			pong_unlocked = false,
+		}
+	}
+	defer delete(data)
+
+	loaded_data: SaveData
+	unmarshal_err := json.unmarshal(data, &loaded_data)
+	if unmarshal_err != nil {
+		fmt.println("Error unmarshaling save data:", unmarshal_err)
+		return SaveData{
+			hockey_games_won = 0,
+			total_power_shots = 0,
+			matches_won = 0,
+			tennis_unlocked = false,
+			pong_unlocked = false,
+		}
+	}
+
+	fmt.println("Loaded game data:", loaded_data)
+	return loaded_data
+}
+
+// Check if a mode is unlocked (considering debug flags)
+isModeUnlocked :: proc(mode: GameMode) -> bool {
+	if debug_unlock_all {
+		return true
+	}
+
+	switch mode {
+	case .AIR_HOCKEY, .SQUASH:
+		return true // Always unlocked
+	case .TENNIS:
+		return save_data.tennis_unlocked
+	case .PONG:
+		return save_data.pong_unlocked
+	}
+
+	return false
+}
+
+// Check and update unlocks based on current progress
+updateUnlocks :: proc() {
+	changed := false
+
+	// Unlock tennis after winning 10 hockey games
+	if save_data.hockey_games_won >= 10 && !save_data.tennis_unlocked {
+		save_data.tennis_unlocked = true
+		changed = true
+	}
+
+	// Unlock pong after doing 100 power shots
+	if save_data.total_power_shots >= 100 && !save_data.pong_unlocked {
+		save_data.pong_unlocked = true
+		changed = true
+	}
+
+	if changed {
+		saveSaveData()
+	}
+}
+
 getModeConfig :: proc(mode: GameMode) -> ModeConfig {
 	switch mode {
 	case .PONG:
@@ -1579,7 +1769,7 @@ drawTitle :: proc() {
 	rl.DrawText("DeBug info: hold B", 20, 320, 20, theme.txt_dark)
 }
 
-drawModeSelect :: proc(selected: GameMode) {
+drawModeSelect :: proc(selected: GameMode, locked_msg_timer: i32) {
 	// Title
 	title_text: cstring = "SELECT GAME MODE"
 	title_size: i32 = 40
@@ -1592,8 +1782,8 @@ drawModeSelect :: proc(selected: GameMode) {
 	inst_width := rl.MeasureText(inst_text, inst_size)
 	rl.DrawText(inst_text, WIN_DIM.x / 2 - inst_width / 2, 360, inst_size, theme.txt_light)
 
-	// Mode boxes in a row
-	modes := [4]GameMode{.PONG, .AIR_HOCKEY, .SQUASH, .TENNIS}
+	// Mode boxes in a row (Air Hockey first)
+	modes := [4]GameMode{.AIR_HOCKEY, .SQUASH, .TENNIS, .PONG}
 	box_width: i32 = 130
 	box_height: i32 = 180
 	spacing: i32 = 10
@@ -1605,11 +1795,41 @@ drawModeSelect :: proc(selected: GameMode) {
 		x := start_x + i32(i) * (box_width + spacing)
 		y := start_y
 
+		// Check if mode is locked
+		is_locked := !isModeUnlocked(mode)
+		unlock_text: cstring
+		if is_locked {
+			if mode == .TENNIS {
+				remaining := 10 - save_data.hockey_games_won
+				if remaining < 0 do remaining = 0
+				unlock_text = rl.TextFormat("Win %i Hockey games", remaining)
+			} else if mode == .PONG {
+				remaining := 100 - save_data.total_power_shots
+				if remaining < 0 do remaining = 0
+				unlock_text = rl.TextFormat("Do %i Power Shots", remaining)
+			}
+		}
+
 		// Box background
 		is_selected := mode == selected
 		box_color := config.bg_color
+		if is_locked {
+			// Darken locked modes
+			box_color = rl.Color{
+				u8(box_color.r / 3),
+				u8(box_color.g / 3),
+				u8(box_color.b / 3),
+				255,
+			}
+		}
+
+		// Lift effect for selected mode
 		if is_selected {
-			// Highlight selected with pulsing border
+			y -= 5
+		}
+
+		// Highlight selected with border (after lift effect)
+		if is_selected {
 			border_thickness: i32 = 4
 			rl.DrawRectangle(
 				x - border_thickness,
@@ -1618,8 +1838,6 @@ drawModeSelect :: proc(selected: GameMode) {
 				box_height + border_thickness * 2,
 				config.accent_color,
 			)
-			// Lift effect
-			y -= 5
 		}
 
 		// Draw box
@@ -1686,17 +1904,61 @@ drawModeSelect :: proc(selected: GameMode) {
 			desc_y += desc_size + 2
 		}
 
-		// Win score indicator
-		score_text := rl.TextFormat("First to %i", config.win_score)
-		score_size: i32 = 11
-		score_width := rl.MeasureText(score_text, score_size)
-		rl.DrawText(
-			score_text,
-			x + box_width / 2 - score_width / 2,
-			y + box_height - 20,
-			score_size,
-			config.accent_color,
-		)
+		// Mood text or unlock requirement
+		if is_locked {
+			// Unlock requirement text
+			req_size: i32 = 10
+			req_width := rl.MeasureText(unlock_text, req_size)
+			rl.DrawText(
+				unlock_text,
+				x + box_width / 2 - req_width / 2,
+				y + box_height - 20,
+				req_size,
+				rl.Color{150, 150, 150, 255},
+			)
+		} else {
+			// Mood description
+			mood_text: cstring
+			switch mode {
+			case .AIR_HOCKEY:
+				mood_text = "Floaty..."
+			case .SQUASH:
+				mood_text = "Practice..."
+			case .TENNIS:
+				mood_text = "Affluent..."
+			case .PONG:
+				mood_text = "Nostalgic..."
+			}
+
+			mood_size: i32 = 11
+			mood_width := rl.MeasureText(mood_text, mood_size)
+			rl.DrawText(
+				mood_text,
+				x + box_width / 2 - mood_width / 2,
+				y + box_height - 20,
+				mood_size,
+				config.accent_color,
+			)
+		}
+	}
+
+	// Show "LOCKED" message if trying to select locked mode
+	if locked_msg_timer > 0 {
+		locked_text: cstring = "LOCKED"
+		locked_size: i32 = 60
+		locked_width := rl.MeasureText(locked_text, locked_size)
+
+		// Fade effect
+		alpha := f32(locked_msg_timer) / 120.0
+		if locked_msg_timer > 100 {
+			alpha = 1.0 - f32(locked_msg_timer - 100) / 20.0
+		}
+
+		locked_color := rl.Color{255, 100, 100, u8(alpha * 255)}
+
+		// Draw with shadow for visibility
+		rl.DrawText(locked_text, WIN_DIM.x / 2 - locked_width / 2 + 2, WIN_DIM.y / 2 - locked_size / 2 + 2, locked_size, rl.Color{0, 0, 0, u8(alpha * 150)})
+		rl.DrawText(locked_text, WIN_DIM.x / 2 - locked_width / 2, WIN_DIM.y / 2 - locked_size / 2, locked_size, locked_color)
 	}
 }
 

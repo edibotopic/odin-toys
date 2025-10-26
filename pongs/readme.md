@@ -6,25 +6,25 @@ Pong clones written in the [Odin language](http://odin-lang.org/) using the [Ray
 
 # Bugs
 
-- [ ] Hockey: CPU tends to score own goals
-- [ ] Scoring logic still messed up after side switch
-- [ ] UI gets in the way during play
+- [~] Hockey: CPU tends to score own goals
+- [X] Scoring logic still messed up after side switch
+- [X] UI gets in the way during play
 - [ ] Some games too slow and limited (tennis)
-- [ ] Hockey: buggy hit direction behaviour after side switch
-- [ ] Possible audio issues on Linux?
+- [X] Hockey: buggy hit direction behaviour after side switch
+- [X] Possible audio issues
 
 # Priority
 
 - [ ] Improve CPU/AI movement
-- [ ] Less clunky title menu
-- [ ] Some modes should be unlockable
+- [X] Less clunky title menu
+- [X] Some modes should be unlockable
 
 # Nice-to-haves
 
 - [ ] Allow window resize
 - [X] Menu with choices for game mode
 - [X] Visible countdown before each serve
-- [~] Matches and games with side-switching
+- [X] Matches and games with side-switching
 - [ ] Stress/stamina/aggression meter(s)
 - [ ] Music adapts to game situation
 - [ ] Better spin physics
