@@ -17,6 +17,7 @@ Pong clones written in the [Odin language](http://odin-lang.org/) using the [Ray
 
 - [ ] Improve CPU/AI movement
 - [ ] Less clunky title menu
+- [ ] Some modes should be unlockable
 
 # Nice-to-haves
 
